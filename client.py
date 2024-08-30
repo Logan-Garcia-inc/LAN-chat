@@ -1,10 +1,11 @@
 import socket
+import os
 import time
 import threading
 import urllib.request
 path=os.path.dirname(__file__)
-
-with urllib.request.urlopen("https://raw.githubusercontent.com/25garcial/LAN-chat/main/client.py") as url:
+source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
+with urllib.request.urlopen(source) as url:
     code=url.read().decode("utf-8")
     with open(path, "r") as file:
         if (file.read() != code):
