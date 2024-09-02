@@ -1,5 +1,20 @@
 import socket
+import os
+import time
 import threading
+import urllib.request
+path=__file__
+source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/sockets/server.py"
+#with urllib.request.urlopen(source) as url:
+   # code=url.read().decode("utf-8")
+   # with open(path, "r") as file:
+       # if (file.read() != code):
+         #   if (input("update code? y/n :").lower()=="y"):
+             #   with open(path, "w") as file:
+             #       file.write(code)
+            #        print("Updated code. Please restart.")
+            #        time.sleep(5)
+             #       quit()
 
 def handle_client(conn, addr):
     while True:

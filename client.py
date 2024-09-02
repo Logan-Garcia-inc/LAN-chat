@@ -4,7 +4,7 @@ import time
 import threading
 import urllib.request
 path=__file__
-source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
+source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/sockets/client.py"
 #with urllib.request.urlopen(source) as url:
    # code=url.read().decode("utf-8")
    # with open(path, "r") as file:
