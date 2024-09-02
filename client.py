@@ -18,14 +18,14 @@ source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.
 
 def receive_from_server(s):
     while True:
-        data = s.recv(1024)
+        data = s.recv(1024).decode()
         if data:
             print(data)
 
 def send_to_server(s):
     while True:
         message = input("Enter message to send: ")
-        s.sendall(message)
+        s.sendall(message.encode())
 
 HOST = '127.0.0.1'
 PORT = 42069
@@ -36,6 +36,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             print("Searching for host on " + HOST)
             s.connect((HOST, PORT))
             print("connected")
+            break
         except ConnectionRefusedError:
             print("Connection refused")
     threading.Thread(target=send_to_server, args=(s,)).start()
