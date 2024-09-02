@@ -19,8 +19,9 @@ source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/sockets/clie
 def receive_from_server(s):
     while True:
         data = s.recv(1024).decode()
-        if data:
-            print(data)
+        if not data:
+            s.close()
+        print(data)
 
 def send_to_server(s):
     while True:
