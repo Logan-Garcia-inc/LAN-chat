@@ -5,8 +5,8 @@ import time
 import threading
 import urllib.request
 path=__file__
-if False:
-    source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/prod/server.py"
+if True:
+    source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/server.py"
     with urllib.request.urlopen(source) as url:
         code=url.read().decode("utf-8")
         with open(path, "r") as file:
