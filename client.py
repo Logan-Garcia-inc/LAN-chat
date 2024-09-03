@@ -9,9 +9,9 @@ path=__file__
 source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
 lastMessage=""
 with urllib.request.urlopen(source) as url:
-    code=url.read().decode("utf-8")
+    code="\n".join(url.readlines()[1:).decode("utf-8")
     with open(path, "r") as file:
-        if (file.read() != code):
+        if ("\n".join(file.readlines()[1:) != code):
             if (input("update code? y/n :").lower()=="y"):
                 with open(path, "w") as file:
                     file.write(code)
