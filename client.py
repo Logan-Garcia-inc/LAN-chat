@@ -1,3 +1,4 @@
+name=""
 import json
 import socket
 import os
@@ -5,22 +6,26 @@ import time
 import threading
 import urllib.request
 path=__file__
-source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/sockets/client.py"
-#with urllib.request.urlopen(source) as url:
-   # code=url.read().decode("utf-8")
-   # with open(path, "r") as file:
-       # if (file.read() != code):
-         #   if (input("update code? y/n :").lower()=="y"):
-             #   with open(path, "w") as file:
-             #       file.write(code)
-            #        print("Updated code. Please restart.")
-            #        time.sleep(5)
-             #       quit()
+source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
 
-name=""
+with urllib.request.urlopen(source) as url:
+    code=url.read().decode("utf-8")
+    with open(path, "r") as file:
+        if (file.read() != code):
+            if (input("update code? y/n :").lower()=="y"):
+                with open(path, "w") as file:
+                    file.write(code)
+                    print("Updated code. Please restart.")
+                    time.sleep(5)
+                    quit()
+
 if not name:
     name=input("Set name: ")
-
+    with open(path, "r") as file:
+        lines=file.readlines()
+    lines[0]='name="'+name+'"'
+    with open(path, "rw") as file:
+        file.writelines(lines)
 def send_loop(s):
     while True:
         send_to_server(s)
