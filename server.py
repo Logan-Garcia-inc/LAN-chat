@@ -18,16 +18,15 @@ source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/sockets/serv
              #       quit()
 lobbies={}
 def add_to_lobby(addr, conn,lobby):
-     print(lobby+ " in "+ ",".join(lobbies.keys())+": "+ lobby in lobbies)
-
-     if lobby in lobbies:
-        lobbies[lobby][addr]=conn
-        return True
-     else:
-        lobbies[lobby]={}
-        lobbies[lobby][addr]=conn
-        return True
-
+    print(lobby+ " in "+ ",".join(lobbies.keys())+": "+ str(lobby in lobbies))
+    if lobby in lobbies:
+       lobbies[lobby][addr]=conn
+       return True
+    else:
+       lobbies[lobby]={}
+       lobbies[lobby][addr]=conn
+       return True
+    return False
 def remove_from_lobby(addr, lobby):
     lobbies[lobby].pop(addr)
     if len(lobbies[lobby])==0:
@@ -46,13 +45,13 @@ def handle_client(conn, addr):
         data=json.loads(data)
         if(data["type"]=="response"):
             if(data["data"]=="lobby"):
-                lobby= add_to_lobby(addr,conn,data["message"])
-                    if lobby:
-                        send_to_client(conn,addr,{"type": "response", "data":"lobby", "message":"joined:"+lobby})
+                lobby=data["message"]
+                if add_to_lobby(addr,conn,lobby):
+                    send_to_client(conn,addr,{"type": "response", "data":"lobby", "message":"joined:"+lobby})
         if data["type"]=="message":
-            print(lobbies)
+            print(lobbies[lobby])
             for i in lobbies[lobby]:
-                send_to_client(i[1], addr, {"type":"message","message":data["message"]})
+                send_to_client(i, addr, {"type":"message","message":data["message"]})
         print(data)
 
 def send_to_client(conn,addr, message):
@@ -67,8 +66,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.listen(5)
     print(f"Server listening on {HOST}:{PORT}...")
     while True:
+        #addr is (ip, port)
         conn, addr = s.accept()
         print("Connected to "+str(addr))
-        #threading.Thread(target=send_to_client, args=(conn,addr)).start()
-        threading.Thread(target=handle_client, args=(conn, addr)).start()
+        #threading.Thread(target=send_to_client, args=(conn,addr[0])).start()
+        threading.Thread(target=handle_client, args=(conn, addr[0])).start()
     s.close()
