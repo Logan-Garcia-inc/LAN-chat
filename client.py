@@ -1,4 +1,4 @@
-name="[A"
+name=""
 import json
 import socket
 import os
@@ -38,7 +38,7 @@ def receive_from_server(s):
             s.close()
         #print(data)
         if data["type"]=="message":
-            print(data["from"]+": "+data["message"])
+            print("\n"+data["from"]+": "+data["message"])
             print("Enter message to send: ")
         if data["type"]=="response":
             if data["data"]=="lobby":
