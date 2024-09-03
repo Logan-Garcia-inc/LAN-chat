@@ -6,46 +6,49 @@ import time
 import threading
 import urllib.request
 path=__file__
-source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
-with urllib.request.urlopen(source) as url:
-    code= "".join(url.read().decode().split("\n")[1:])
- #   code="\n".join(url.readlines().decode()[1:])
-  #  with open(path, "r") as file:
-   #     if ("\n".join(file.readlines()[1:]) != code):
-    #        if (input("update code? y/n :").lower()=="y"):
-     #           with open(path, "w") as file:
-      #              file.write(code)
-       #             print("Updated code. Please restart.")
-        #            time.sleep(5)
-         #           quit()
+if False:
+    source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/prod/client.py"
+    with urllib.request.urlopen(source) as url:
+        code= "".join(url.read().decode().split("\n")[1:])
+        code="\n".join(url.readlines().decode()[1:])
+        with open(path, "r") as file:
+            if ("\n".join(file.readlines()[1:]) != code):
+                if (input("update code? y/n :").lower()=="y"):
+                    with open(path, "w") as file:
+                        file.write(code)
+                        print("Updated code. Please restart.")
+                        time.sleep(5)
+                        quit()
 
 if not name:
     name=input("Set name: ")
-    with open(path, "r") as file:
-        lines=file.readlines()
-    lines[0]='name="'+name+'"\n'
-    with open(path, "w") as file:
-        file.writelines(lines)
+#     with open(path, "r") as file:
+#         lines=file.readlines()
+#     lines[0]='name="'+name+'"\n'
+#     with open(path, "w") as file:
+#         file.writelines(lines)
 
 def send_loop(s):
+    print("Enter message to send: \n")
     while True:
         send_to_server(s)
 
 def receive_from_server(s):
     while True:
-        data = json.loads(s.recv(1024).decode())
+        try:
+            data = json.loads(s.recv(1024).decode())
+        except ConnectionResetError:
+            break
         if not data:
             s.close()
         #print(data)
         if data["type"]=="message":
-            print("\n"+data["from"]+": "+data["message"])
-            print("Enter message to send: ")
+            print(data["from"]+": "+data["message"])
         if data["type"]=="response":
             if data["data"]=="lobby":
                 response=data["message"].split(":")
                 if response[0]=="joined":
                     print("Joined: "+ response[1])
-                    print("Enter message to send: ")
                     threading.Thread(target=send_loop, args=(s,)).start()
         if data["type"]=="query":
             if data["data"]=="lobby":
@@ -54,7 +57,7 @@ def receive_from_server(s):
 
 def send_to_server(s, type="message", data="", message=""):
         if not message:
-            message = input("Enter message to send: ")
+            message = input()
         s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name}).encode())
 
 HOST = '127.0.0.1'
@@ -66,7 +69,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             print("Searching for host on " + HOST)
             s.connect((HOST, PORT))
             print("connected\n")
-            break
+            receive_from_server(s)
         except ConnectionRefusedError:
             print("Connection refused")
-    receive_from_server(s)
+    
