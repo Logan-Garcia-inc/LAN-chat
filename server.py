@@ -42,6 +42,7 @@ def handle_client(conn, addr):
             if lobby:
                 remove_from_lobby(addr,lobby)
             conn.close()
+            break
         data=json.loads(data)
         if(data["type"]=="response"):
             if(data["data"]=="lobby"):
@@ -52,7 +53,7 @@ def handle_client(conn, addr):
             #print(lobbies[lobby].values())
             for i in lobbies[lobby].values():
                 #print(i)
-                send_to_client(i, addr, {"type":"message","message":data["message"].filter("\\"), "from":data["name"]})
+                send_to_client(i, addr, {"type":"message","message":data["message"].replace("\\", ""), "from":data["name"]})
         #print(data)
 
 def send_to_client(conn,addr, message):

@@ -23,8 +23,8 @@ if not name:
     name=input("Set name: ")
     with open(path, "r") as file:
         lines=file.readlines()
-    lines[0]='name="'+name+'"'
-    with open(path, "rw") as file:
+    lines[0]='name="'+name+'"\n'
+    with open(path, "w") as file:
         file.writelines(lines)
 def send_loop(s):
     while True:
