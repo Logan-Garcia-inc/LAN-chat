@@ -52,7 +52,7 @@ def handle_client(conn, addr):
             #print(lobbies[lobby].values())
             for i in lobbies[lobby].values():
                 #print(i)
-                send_to_client(i, addr, {"type":"message","message":data["message"]})
+                send_to_client(i, addr, {"type":"message","message":data["message"].filter("\\"), "from":data["name"]})
         #print(data)
 
 def send_to_client(conn,addr, message):

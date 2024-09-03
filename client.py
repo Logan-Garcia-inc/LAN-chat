@@ -16,6 +16,11 @@ source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/sockets/clie
             #        print("Updated code. Please restart.")
             #        time.sleep(5)
              #       quit()
+
+name=""
+if not name:
+    name=input("Set name: ")
+
 def send_loop(s):
     while True:
         send_to_server(s)
@@ -26,6 +31,8 @@ def receive_from_server(s):
         if not data:
             s.close()
         #print(data)
+        if data["type"]=="message":
+            print(data["from"]+": "+data["message"])
         if data["type"]=="response":
             if data["data"]=="lobby":
                 response=data["message"].split(":")
@@ -40,7 +47,7 @@ def receive_from_server(s):
 def send_to_server(s, type="message", data="", message=""):
         if not  message:
             message = input("Enter message to send: ")
-        s.sendall(json.dumps({"type":type,"data":data,"message":message}).encode())
+        s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name}).encode())
 
 HOST = '127.0.0.1'
 PORT = 42069
