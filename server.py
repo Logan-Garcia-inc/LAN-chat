@@ -44,6 +44,8 @@ def handle_client(conn, addr):
             conn.close()
             break
         data=json.loads(data)
+        if not data["message"]:
+            pass
         if(data["type"]=="response"):
             if(data["data"]=="lobby"):
                 lobby=data["message"]

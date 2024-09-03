@@ -7,7 +7,7 @@ import threading
 import urllib.request
 path=__file__
 source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
-
+lastMessage=""
 with urllib.request.urlopen(source) as url:
     code=url.read().decode("utf-8")
     with open(path, "r") as file:
@@ -26,6 +26,7 @@ if not name:
     lines[0]='name="'+name+'"\n'
     with open(path, "w") as file:
         file.writelines(lines)
+
 def send_loop(s):
     while True:
         send_to_server(s)
@@ -37,12 +38,14 @@ def receive_from_server(s):
             s.close()
         #print(data)
         if data["type"]=="message":
-            print(data["from"]+": "+data["message"])
+            lastMessage=data["from"]+": "+data["message"]
+            print(lastMessage)
         if data["type"]=="response":
             if data["data"]=="lobby":
                 response=data["message"].split(":")
                 if response[0]=="joined":
-                    print("Joined: "+ response[1])
+                    lastMessage="Joined: "+ response[1]
+                    print(lastMessage)
                     threading.Thread(target=send_loop, args=(s,)).start()
         if data["type"]=="query":
             if data["data"]=="lobby":
@@ -50,7 +53,7 @@ def receive_from_server(s):
                 send_to_server(s,"response","lobby",lobby)
 
 def send_to_server(s, type="message", data="", message=""):
-        if not  message:
+        if not message:
             message = input("Enter message to send: ")
         s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name}).encode())
 
