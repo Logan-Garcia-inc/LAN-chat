@@ -1,4 +1,4 @@
-name=""
+name="[A"
 import json
 import socket
 import os
@@ -7,17 +7,17 @@ import threading
 import urllib.request
 path=__file__
 source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
-lastMessage=""
 with urllib.request.urlopen(source) as url:
-    code="\n".join(url.readlines()[1:).decode("utf-8")
-    with open(path, "r") as file:
-        if ("\n".join(file.readlines()[1:) != code):
-            if (input("update code? y/n :").lower()=="y"):
-                with open(path, "w") as file:
-                    file.write(code)
-                    print("Updated code. Please restart.")
-                    time.sleep(5)
-                    quit()
+    code= "".join(url.read().decode().split("\n")[1:])
+ #   code="\n".join(url.readlines().decode()[1:])
+  #  with open(path, "r") as file:
+   #     if ("\n".join(file.readlines()[1:]) != code):
+    #        if (input("update code? y/n :").lower()=="y"):
+     #           with open(path, "w") as file:
+      #              file.write(code)
+       #             print("Updated code. Please restart.")
+        #            time.sleep(5)
+         #           quit()
 
 if not name:
     name=input("Set name: ")
@@ -38,14 +38,14 @@ def receive_from_server(s):
             s.close()
         #print(data)
         if data["type"]=="message":
-            lastMessage=data["from"]+": "+data["message"]
-            print(lastMessage)
+            print(data["from"]+": "+data["message"])
+            print("Enter message to send: ")
         if data["type"]=="response":
             if data["data"]=="lobby":
                 response=data["message"].split(":")
                 if response[0]=="joined":
-                    lastMessage="Joined: "+ response[1]
-                    print(lastMessage)
+                    print("Joined: "+ response[1])
+                    print("Enter message to send: ")
                     threading.Thread(target=send_loop, args=(s,)).start()
         if data["type"]=="query":
             if data["data"]=="lobby":
