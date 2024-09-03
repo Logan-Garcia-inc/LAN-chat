@@ -1,3 +1,4 @@
+import json
 import socket
 import os
 import time
@@ -15,18 +16,31 @@ source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/sockets/clie
             #        print("Updated code. Please restart.")
             #        time.sleep(5)
              #       quit()
+def send_loop(s):
+    while True:
+        send_to_server(s)
 
 def receive_from_server(s):
     while True:
-        data = s.recv(1024).decode()
+        data = json.loads(s.recv(1024).decode())
         if not data:
             s.close()
         print(data)
+        if data["type"]=="response":
+            if data["data"]=="lobby":
+                response=data["message"].split(":")
+                if response[0]=="joined":
+                    print("Joined: "+ response[1])
+                    threading.Thread(target=send_loop, args=(s,)).start()
+        if data["type"]=="query":
+            if data["data"]=="lobby":
+                lobby =input(data["message"])
+                send_to_server(s,"response","lobby",lobby)
 
-def send_to_server(s):
-    while True:
-        message = input("Enter message to send: ")
-        s.sendall(message.encode())
+def send_to_server(s, type="message", data="", message=""):
+        if not  message:
+            message = input("Enter message to send: ")
+        s.sendall(json.dumps({"type":type,"data":data,"message":message}).encode())
 
 HOST = '127.0.0.1'
 PORT = 42069
@@ -40,5 +54,4 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             break
         except ConnectionRefusedError:
             print("Connection refused")
-    threading.Thread(target=send_to_server, args=(s,)).start()
     receive_from_server(s)
