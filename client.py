@@ -25,7 +25,7 @@ def receive_from_server(s):
         data = json.loads(s.recv(1024).decode())
         if not data:
             s.close()
-        print(data)
+        #print(data)
         if data["type"]=="response":
             if data["data"]=="lobby":
                 response=data["message"].split(":")
@@ -50,7 +50,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
             print("Searching for host on " + HOST)
             s.connect((HOST, PORT))
-            print("connected")
+            print("connected\n")
             break
         except ConnectionRefusedError:
             print("Connection refused")

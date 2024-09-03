@@ -18,7 +18,7 @@ source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/sockets/serv
              #       quit()
 lobbies={}
 def add_to_lobby(addr, conn,lobby):
-    print(lobby+ " in "+ ",".join(lobbies.keys())+": "+ str(lobby in lobbies))
+    #print(lobby+ " in "+ ",".join(lobbies.keys())+": "+ str(lobby in lobbies))
     if lobby in lobbies:
        lobbies[lobby][addr]=conn
        return True
@@ -49,10 +49,11 @@ def handle_client(conn, addr):
                 if add_to_lobby(addr,conn,lobby):
                     send_to_client(conn,addr,{"type": "response", "data":"lobby", "message":"joined:"+lobby})
         if data["type"]=="message":
-            print(lobbies[lobby])
-            for i in lobbies[lobby]:
+            #print(lobbies[lobby].values())
+            for i in lobbies[lobby].values():
+                #print(i)
                 send_to_client(i, addr, {"type":"message","message":data["message"]})
-        print(data)
+        #print(data)
 
 def send_to_client(conn,addr, message):
     message = json.dumps(message)
