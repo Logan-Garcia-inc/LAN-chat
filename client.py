@@ -10,7 +10,6 @@ if True:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
     with urllib.request.urlopen(source) as url:
         code= "".join(url.read().decode().split("\n")[1:])
-        code="\n".join(url.readlines().decode()[1:])
         with open(path, "r") as file:
             if ("\n".join(file.readlines()[1:]) != code):
                 if (input("update code? y/n :").lower()=="y"):
