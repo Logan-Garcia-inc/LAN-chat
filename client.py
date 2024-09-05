@@ -1,4 +1,5 @@
 name=""
+HOST = ''
 import json
 import socket
 import os
@@ -9,23 +10,34 @@ path=__file__
 if True:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
     with urllib.request.urlopen(source) as url:
-        code= "".join(url.read().decode().split("\n")[1:])
+        code= "\n".join(url.read().decode().split("\n")[2:])
+        print(code)
         with open(path, "r") as file:
-            if ("\n".join(file.readlines()[1:]) != code):
+            localCode="".join(file.readlines()[2:])
+            print(localCode)
+            if ( localCode != code):
                 if (input("update code? y/n :").lower()=="y"):
                     with open(path, "w") as file:
                         file.write(code)
                         print("Updated code. Please restart.")
                         time.sleep(5)
                         quit()
+if not HOST:
+    HOST=input("Set server IP: ")
+    with open(path, "r") as file:
+        
+        lines=file.readlines()
+    lines[1]='HOST="'+HOST+'"\n'
+    with open(path, "w") as file:
+        file.writelines(lines)
 
 if not name:
     name=input("Set name: ")
-     with open(path, "r") as file:
-         lines=file.readlines()
-     lines[0]='name="'+name+'"\n'
-     with open(path, "w") as file:
-         file.writelines(lines)
+    with open(path, "r") as file:
+        lines=file.readlines()
+    lines[0]='name="'+name+'"\n'
+    with open(path, "w") as file:
+        file.writelines(lines)
 
 def send_loop(s):
     print("Enter message to send: \n")
@@ -59,7 +71,7 @@ def send_to_server(s, type="message", data="", message=""):
             message = input()
         s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name}).encode())
 
-HOST = '127.0.0.1'
+
 PORT = 42069
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
