@@ -5,6 +5,7 @@ import time
 import threading
 import urllib.request
 path=__file__
+lock= threading.Lock()
 if True:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/server.py"
     with urllib.request.urlopen(source) as url:
@@ -19,29 +20,31 @@ if True:
                         quit()
 lobbies={"default":{}}
 def add_to_lobby(addr, conn,lobby):
-    #print(lobby+ " in "+ ",".join(lobbies.keys())+": "+ str(lobby in lobbies))
-    if lobby in lobbies:
-       lobbies[lobby][addr]=conn
-       print(lobbies.keys())
-       print(lobbies.values())
-       return True
-    else:
-       lobbies[lobby]={}
-       lobbies[lobby][addr]=conn
-       print(lobbies.keys())
-       print(lobbies.values())
-       return True
+    with lock:
+        #print(lobby+ " in "+ ",".join(lobbies.keys())+": "+ str(lobby in lobbies))
+        if lobby in lobbies:
+           lobbies[lobby][addr]=conn
+           print(lobbies.keys())
+           print(lobbies.values())
+           return True
+        else:
+           lobbies[lobby]={}
+           lobbies[lobby][addr]=conn
+           print(lobbies.keys())
+           print(lobbies.values())
+           return True
     
 def remove_from_lobby(addr, lobby):
-    lobbies[lobby].pop(addr)
-    if len(lobbies[lobby])==0:
-        lobbies.pop(lobby)
+    with lock:
+        lobbies[lobby].pop(addr)
+        if len(lobbies[lobby])==0:
+            lobbies.pop(lobby)
 
 def handle_client(conn, addr):
     global lobbies
     name=""
     lobby=""
-    send_to_client(conn,addr,{"type":"query", "data":"lobby", "message":"Available lobbies:\n\n"+",".join(lobbies.keys())+"\n\nJoin or create lobby: "})
+    send_to_client(conn,{"type":"query", "data":"lobby", "message":"Available lobbies:\n\n"+",".join(lobbies.keys())+"\n\nJoin or create lobby: "})
     while True:
         try:
             data = conn.recv(1024).decode()
