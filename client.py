@@ -1,5 +1,5 @@
 name=""
-HOST = ''
+HOST="127.0.0.1"
 import json
 import socket
 import os
@@ -7,14 +7,14 @@ import time
 import threading
 import urllib.request
 path=__file__
-if True:
+prod=True
+if not prod:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
     with urllib.request.urlopen(source) as url:
-        code= "\n".join(url.read().decode().split("\n")[2:])
-        print(code)
+        code= "\n".join(url.read().decode("utf-8").split("\n")[2:])
         with open(path, "r") as file:
             localCode="".join(file.readlines()[2:])
-            print(localCode)
+#            print(localCode)
             if ( localCode != code):
                 if (input("update code? y/n :").lower()=="y"):
                     with open(path, "w") as file:
@@ -24,20 +24,22 @@ if True:
                         quit()
 if not HOST:
     HOST=input("Set server IP: ")
-    with open(path, "r") as file:
+    if prod:
+        with open(path, "r") as file:
         
-        lines=file.readlines()
-    lines[1]='HOST="'+HOST+'"\n'
-    with open(path, "w") as file:
-        file.writelines(lines)
+            lines=file.readlines()
+        lines[1]='HOST="'+HOST+'"\n'
+        with open(path, "w") as file:
+            file.writelines(lines)
 
 if not name:
     name=input("Set name: ")
-    with open(path, "r") as file:
-        lines=file.readlines()
-    lines[0]='name="'+name+'"\n'
-    with open(path, "w") as file:
-        file.writelines(lines)
+    if not prod:
+        with open(path, "r") as file:
+            lines=file.readlines()
+        lines[0]='name="'+name+'"\n'
+        with open(path, "w") as file:
+            file.writelines(lines)
 
 def send_loop(s):
     print("Enter message to send: \n")
@@ -47,9 +49,12 @@ def send_loop(s):
 def receive_from_server(s):
     while True:
         try:
-            data = json.loads(s.recv(1024).decode())
+            data = s.recv(1024).decode("utf-8")
+            print(data)
+            
         except ConnectionResetError:
             break
+        data=json.loads(data)
         if not data:
             s.close()
         #print(data)
@@ -75,12 +80,11 @@ def send_to_server(s, type="message", data="", message=""):
 PORT = 42069
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    while True:
-        try:
-            print("Searching for host on " + HOST)
-            s.connect((HOST, PORT))
-            print("connected\n")
-            receive_from_server(s)
-        except ConnectionRefusedError:
-            print("Connection refused")
+    try:
+        print("Searching for host on " + HOST)
+        s.connect((HOST, PORT))
+        print("connected\n")
+        receive_from_server(s)
+    except ConnectionRefusedError:
+        print("Connection refused")
     
