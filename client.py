@@ -14,7 +14,6 @@ if not prod:
         code= "\n".join(url.read().decode("utf-8").split("\n")[2:])
         with open(path, "r") as file:
             localCode="".join(file.readlines()[2:])
-#            print(localCode)
             if ( localCode != code):
                 if (input("update code? y/n :").lower()=="y"):
                     with open(path, "w") as file:
@@ -26,7 +25,6 @@ if not HOST:
     HOST=input("Set server IP: ")
     if prod:
         with open(path, "r") as file:
-        
             lines=file.readlines()
         lines[1]='HOST="'+HOST+'"\n'
         with open(path, "w") as file:
@@ -50,22 +48,23 @@ def receive_from_server(s):
     while True:
         try:
             data = s.recv(1024).decode("utf-8")
-            #print(data)
             
         except ConnectionResetError:
             break
         data=json.loads(data)
         if not data:
             s.close()
-        #print(data)
+
         if data["type"]=="message":
             print(data["from"]+": "+data["message"])
+
         if data["type"]=="response":
             if data["data"]=="lobby":
                 response=data["message"].split(":")
                 if response[0]=="joined":
                     print("Joined: "+ response[1])
                     threading.Thread(target=send_loop, args=(s,)).start()
+  
         if data["type"]=="query":
             if data["data"]=="lobby":
                 lobby =input(data["message"])
@@ -78,7 +77,6 @@ def send_to_server(s, type="message", data="", message=""):
 
 
 PORT = 42069
-
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         print("Searching for host on " + HOST)

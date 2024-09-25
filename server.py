@@ -22,17 +22,12 @@ if not prod:
 lobbies={"default":{}}
 def add_to_lobby(addr, conn,lobby):
     with lock:
-        #print(lobby+ " in "+ ",".join(lobbies.keys())+": "+ str(lobby in lobbies))
         if lobby in lobbies:
            lobbies[lobby][addr]=conn
-           #print(lobbies.keys())
-           #print(lobbies.values())
            return True
         else:
            lobbies[lobby]={}
            lobbies[lobby][addr]=conn
-           #print(lobbies.keys())
-           #print(lobbies.values())
            return True
     
 def remove_from_lobby(addr, lobby):
@@ -49,7 +44,6 @@ def handle_client(conn, addr):
     while True:
         try:
             data = conn.recv(1024)
-            #print(data)
             data=data.decode("utf-8")
         except ConnectionResetError:
             if lobby:
@@ -57,7 +51,6 @@ def handle_client(conn, addr):
                 send_to_clients(lobby, {"type":"message", "data":"", "message":name+" left"})
             conn.close()
             break
-        #print(data)
         data=json.loads(data)
        
         if(data["type"]=="response"):
@@ -67,9 +60,7 @@ def handle_client(conn, addr):
                 if add_to_lobby(addr,conn,lobby):
                     send_to_clients(lobby, {"type": "response", "data":"lobby", "message":"joined:"+lobby})
         if data["type"]=="message" and data["message"]:
-            #print(lobbies[lobby].values())
             send_to_clients(lobby, {"type":"message","message":data["message"], "from":data["name"]})
-        #print(data)
         
 def send_to_clients(lobby, message):
      message = json.dumps(message)
@@ -89,9 +80,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.listen(5)
     print(f"Server listening on {HOST}:{PORT}...")
     while True:
-        #addr is (ip, port)
         conn, addr = s.accept()
-        print("Connected to "+str(addr))
-        #threading.Thread(target=send_to_client, args=(conn,addr)).start()
+        print("Connected to "+str(addr)) #threading.Thread(target=send_to_client, args=(conn,addr)).start()
         threading.Thread(target=handle_client, args=(conn, addr)).start()
     s.close()
