@@ -1,5 +1,5 @@
 name=""
-HOST=""
+HOST="127.0.0.1"
 import json
 import socket
 import os
@@ -7,7 +7,7 @@ import time
 import threading
 import urllib.request
 path=__file__
-prod=False
+prod=True
 if not prod:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
     with urllib.request.urlopen(source) as url:
@@ -49,20 +49,23 @@ def receive_from_server(s):
         try:
             data = s.recv(1024).decode("utf-8")
             
-        except ConnectionResetError:
+        except ConnectionResetError as e:
+            print(e)
             break
+ #       print("receiving: "+ data)
         data=json.loads(data)
         if not data:
+            print("Server disconnected")
             s.close()
 
         if data["type"]=="message":
             print(data["from"]+": "+data["message"])
-
+        if data["type"]=="announcement":
+            print(data["message"])
         if data["type"]=="response":
             if data["data"]=="lobby":
-                response=data["message"].split(":")
-                if response[0]=="joined":
-                    print("Joined: "+ response[1])
+                if data["message"].split(":")[0]=="Joined":
+                    print(data["message"])
                     threading.Thread(target=send_loop, args=(s,)).start()
   
         if data["type"]=="query":
@@ -73,6 +76,7 @@ def receive_from_server(s):
 def send_to_server(s, type="message", data="", message=""):
         if not message:
             message = input()
+#        print("sending: "+message)
         s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name}).encode())
 
 
