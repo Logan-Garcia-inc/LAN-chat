@@ -1,5 +1,4 @@
 # LAN-chat
-
 Works now
 
 in server.py:
