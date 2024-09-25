@@ -7,7 +7,7 @@ import time
 import threading
 import urllib.request
 path=__file__
-prod=True
+prod=False
 if not prod:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
     with urllib.request.urlopen(source) as url:
