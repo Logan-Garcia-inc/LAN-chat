@@ -6,7 +6,7 @@ import threading
 import urllib.request
 path=__file__
 lock= threading.Lock()
-prod=False
+prod=True
 if not prod:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/server.py"
     with urllib.request.urlopen(source) as url:
@@ -33,7 +33,7 @@ def add_to_lobby(addr, conn,lobby):
 def remove_from_lobby(addr, lobby):
     with lock:
         lobbies[lobby].pop(addr)
-        if len(lobbies[lobby])==0:
+        if len(lobbies[lobby])==0 and len(lobbies.keys())>1:
             lobbies.pop(lobby)
 
 def handle_client(conn, addr):
@@ -45,12 +45,15 @@ def handle_client(conn, addr):
         try:
             data = conn.recv(1024)
             data=data.decode("utf-8")
-        except ConnectionResetError:
+        except e:
+            print(e)
+        if not data:
             if lobby:
                 remove_from_lobby(addr,lobby)
-                send_to_clients(lobby, {"type":"message", "data":"", "message":name+" left"})
+                send_to_clients(lobby, addr, {"type":"announcement", "message":name+" left"})
             conn.close()
             break
+        print("Receiving: "+data)
         data=json.loads(data)
        
         if(data["type"]=="response"):
@@ -58,17 +61,23 @@ def handle_client(conn, addr):
                 name=data["name"]
                 lobby=data["message"]
                 if add_to_lobby(addr,conn,lobby):
-                    send_to_clients(lobby, {"type": "response", "data":"lobby", "message":"joined:"+lobby})
+                    send_to_client(conn,  {"type": "response", "data":"lobby", "message":"Joined: "+lobby})
+                    send_to_clients(lobby,addr,{"type":"announcement", "message":name+" Joined"})
         if data["type"]=="message" and data["message"]:
-            send_to_clients(lobby, {"type":"message","message":data["message"], "from":data["name"]})
+            send_to_clients(lobby, addr, {"type":"message","message":data["message"], "from":data["name"]})
         
-def send_to_clients(lobby, message):
+def send_to_clients(lobby,addr,  message):
      message = json.dumps(message)
-     for i in lobbies[lobby].values():
-        i.sendall(message.encode("utf-8"))
+     print("sending: "+message)
+     for i in lobbies[lobby].keys():
+        #print(addr)
+        #print(i)
+        if(addr!=i):
+           lobbies[lobby][i].sendall(message.encode("utf-8"))
 
 def send_to_client(conn, message):
     message = json.dumps(message)
+    print("sending: "+message)
     conn.sendall(message.encode("utf-8"))
 
 HOST = '0.0.0.0'
