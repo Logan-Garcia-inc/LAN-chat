@@ -49,7 +49,7 @@ def handle_client(conn, addr):
     while True:
         try:
             data = conn.recv(1024)
-            print(data)
+            #print(data)
             data=data.decode("utf-8")
         except ConnectionResetError:
             if lobby:
@@ -57,8 +57,9 @@ def handle_client(conn, addr):
                 send_to_clients(lobby, {"type":"message", "data":"", "message":name+" left"})
             conn.close()
             break
-
+        #print(data)
         data=json.loads(data)
+       
         if(data["type"]=="response"):
             if(data["data"]=="lobby"):
                 name=data["name"]
@@ -71,14 +72,13 @@ def handle_client(conn, addr):
         #print(data)
         
 def send_to_clients(lobby, message):
+     message = json.dumps(message)
      for i in lobbies[lobby].values():
-        message = json.dumps(message)
-        print(message)
         i.sendall(message.encode("utf-8"))
 
 def send_to_client(conn, message):
     message = json.dumps(message)
-    conn.sendall(message.encode())
+    conn.sendall(message.encode("utf-8"))
 
 HOST = '0.0.0.0'
 PORT = 42069

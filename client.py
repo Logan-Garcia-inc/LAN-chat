@@ -50,7 +50,7 @@ def receive_from_server(s):
     while True:
         try:
             data = s.recv(1024).decode("utf-8")
-            print(data)
+            #print(data)
             
         except ConnectionResetError:
             break
