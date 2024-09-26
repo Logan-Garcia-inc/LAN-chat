@@ -19,34 +19,47 @@ if not prod:
                         print("Updated code. Please restart.")
                         time.sleep(5)
                         quit()
-lobbies={"default":{}}
-def add_to_lobby(addr, conn,lobby):
+class Lobby:
+    def __init__(self,name,password):
+        self.name=name
+        self.password=password
+        self.users={}
+        
+lobbies={"default":Lobby("default","")}
+def add_to_lobby(addr, conn,lobby, password):
     with lock:
+        print(lobbies[lobby].password,password)
         if lobby in lobbies:
-           lobbies[lobby][addr]=conn
-           return True
+            if (password==lobbies[lobby].password):
+                
+                lobbies[lobby].users[addr]=conn
+                return
+            else:
+                return False
         else:
-           lobbies[lobby]={}
-           lobbies[lobby][addr]=conn
-           return True
+            lobbies[lobby]=Lobby(lobby, password)
+            return True
+
     
 def remove_from_lobby(addr, lobby):
     with lock:
-        lobbies[lobby].pop(addr)
+        lobbies[lobby].users.pop(addr)
         if len(lobbies[lobby])==0 and len(lobbies.keys())>1:
             lobbies.pop(lobby)
+
 
 def handle_client(conn, addr):
     global lobbies
     name=""
     lobby=""
-    send_to_client(conn,{"type":"query", "data":"lobby", "message":"Available lobbies:\n\n"+",".join(lobbies.keys())+"\n\nJoin or create lobby: "})
+    send_to_client(conn,{"type":"query", "data":json.dumps({name: bool(lobby.password) for name, lobby in lobbies.items()}), "message":"Available lobbies:\n\n"+"replace"+"\n\nJoin or create lobby: "})
     while True:
         try:
             data = conn.recv(1024)
             data=data.decode("utf-8")
         except e:
             print(e)
+      
         if not data:
             if lobby:
                 remove_from_lobby(addr,lobby)
@@ -60,9 +73,12 @@ def handle_client(conn, addr):
             if(data["data"]=="lobby"):
                 name=data["name"]
                 lobby=data["message"]
-                if add_to_lobby(addr,conn,lobby):
+                password=data["password"]
+                if add_to_lobby(addr,conn,lobby, password):
                     send_to_client(conn,  {"type": "response", "data":"lobby", "message":"Joined: "+lobby})
                     send_to_clients(lobby,addr,{"type":"announcement", "message":name+" Joined"})
+                else:
+                    send_to_client(conn,{"type:":"response","data":"lobby", "message":"wrong password"})
         if data["type"]=="message" and data["message"]:
             send_to_clients(lobby, addr, {"type":"message","message":data["message"], "from":data["name"]})
         
