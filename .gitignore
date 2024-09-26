@@ -1,3 +1,2 @@
-*.bat
-test.py
+test.*
 .vscode

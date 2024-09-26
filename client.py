@@ -6,6 +6,7 @@ import os
 import time
 import threading
 import urllib.request
+password=""
 path=__file__
 prod=True
 if not prod:
@@ -69,15 +70,22 @@ def receive_from_server(s):
                     threading.Thread(target=send_loop, args=(s,)).start()
   
         if data["type"]=="query":
-            if data["data"]=="lobby":
-                lobby =input(data["message"])
-                send_to_server(s,"response","lobby",lobby)
+            message=""
+            lobbies = json.loads(data["data"])
+            for name, is_protected in lobbies.items():
+                lock_symbol = "🔒" if is_protected else ""
+                message += f"{name} {lock_symbol},\n"
+            lobby =input(data["message"].replace("replace",message))
+            print(lobbies, lobby)
+            if(lobbies[lobby]):
+                password=input("password: ")
+            send_to_server(s,"response","lobby",lobby)
 
 def send_to_server(s, type="message", data="", message=""):
         if not message:
             message = input()
 #        print("sending: "+message)
-        s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name}).encode())
+        s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password}).encode("utf-8"))
 
 
 PORT = 42069
