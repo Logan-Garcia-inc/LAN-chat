@@ -54,7 +54,7 @@ def receive_from_server(s):
         except ConnectionResetError as e:
             print(e)
             break
- #       print("receiving: "+ data)
+        #print("receiving: "+ data)
         data=json.loads(data)
         if not data:
             print("Server disconnected")
@@ -74,10 +74,10 @@ def receive_from_server(s):
             message=""
             lobbies = json.loads(data["data"])
             for name, is_protected in lobbies.items():
-                lock_symbol = "🔒" if is_protected else ""
+                lock_symbol = "\U0001f512" if is_protected else ""
                 message += f"{name} {lock_symbol}\n"
             lobby =input(data["message"].replace("\\",message))
-            print(lobbies, lobby)
+            
             if(lobby in lobbies):
                 if (lobbies[lobby]):
                     password=input("password: ") 
