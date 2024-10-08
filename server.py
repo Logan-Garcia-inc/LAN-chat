@@ -139,7 +139,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     while True:
         conn, addr = s.accept()
         conn.settimeout(60)
-        print(adddr)
+        print(addr)
         print("Connected to "+str(addr)) #threading.Thread(target=send_to_client, args=(conn,addr)).start()
         threading.Thread(target=handle_client, args=(conn, addr)).start()
     s.close()
