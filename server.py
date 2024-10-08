@@ -28,23 +28,24 @@ class Lobby:
 lobbies={"default":Lobby("default","")}
 def add_to_lobby(addr, conn,lobby, password):
     with lock:
-        print(lobbies[lobby].password,password)
+#delete line        print("'"+lobbies[lobby].password+"' '"+password+"'")
         if lobby in lobbies:
+            print("'"+lobbies[lobby].password+"' '"+password+"'")
             if (password==lobbies[lobby].password):
                 
                 lobbies[lobby].users[addr]=conn
-                return
+                
             else:
                 return False
         else:
             lobbies[lobby]=Lobby(lobby, password)
-            return True
+    return True
 
     
 def remove_from_lobby(addr, lobby):
     with lock:
         lobbies[lobby].users.pop(addr)
-        if len(lobbies[lobby])==0 and len(lobbies.keys())>1:
+        if len(lobbies[lobby].users)==0 and len(lobbies.keys())>1:
             lobbies.pop(lobby)
 
 
@@ -52,7 +53,7 @@ def handle_client(conn, addr):
     global lobbies
     name=""
     lobby=""
-    send_to_client(conn,{"type":"query", "data":json.dumps({name: bool(lobby.password) for name, lobby in lobbies.items()}), "message":"Available lobbies:\n\n"+"replace"+"\n\nJoin or create lobby: "})
+    send_to_client(conn,{"type":"query", "data":json.dumps({name: bool(lobby.password) for name, lobby in lobbies.items()}), "message":"Available lobbies:\n\n"+"\\"+"\n\nJoin or create lobby: "})
     while True:
         try:
             data = conn.recv(1024)
@@ -85,11 +86,12 @@ def handle_client(conn, addr):
 def send_to_clients(lobby,addr,  message):
      message = json.dumps(message)
      print("sending: "+message)
-     for i in lobbies[lobby].keys():
+     print(lobbies[lobby].users)
+     for i in lobbies[lobby].users.keys():
         #print(addr)
         #print(i)
         if(addr!=i):
-           lobbies[lobby][i].sendall(message.encode("utf-8"))
+           lobbies[lobby].users[i].sendall(message.encode("utf-8"))
 
 def send_to_client(conn, message):
     message = json.dumps(message)
