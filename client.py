@@ -46,6 +46,7 @@ def send_loop(s):
         send_to_server(s)
 
 def receive_from_server(s):
+    global password
     while True:
         try:
             data = s.recv(1024).decode("utf-8")
@@ -74,11 +75,14 @@ def receive_from_server(s):
             lobbies = json.loads(data["data"])
             for name, is_protected in lobbies.items():
                 lock_symbol = "🔒" if is_protected else ""
-                message += f"{name} {lock_symbol},\n"
-            lobby =input(data["message"].replace("replace",message))
+                message += f"{name} {lock_symbol}\n"
+            lobby =input(data["message"].replace("\\",message))
             print(lobbies, lobby)
-            if(lobbies[lobby]):
-                password=input("password: ")
+            if(lobby in lobbies):
+                if (lobbies[lobby]):
+                    password=input("password: ") 
+            else:
+                password=input("Set password: ")
             send_to_server(s,"response","lobby",lobby)
 
 def send_to_server(s, type="message", data="", message=""):
