@@ -19,11 +19,13 @@ if not prod:
                         print("Updated code. Please restart.")
                         time.sleep(5)
                         quit()
+                else:
+                    print("Running old version")
 class Lobby:
     def __init__(self,name,password):
         self.name=name
         self.password=password
-        self.users={}
+        self.users={}#users{("127.0.0.1", 23456), socket}
         
 lobbies={"default":Lobby("default","")}
 def add_to_lobby(addr, conn,lobby, password):
@@ -48,7 +50,13 @@ def remove_from_lobby(addr, lobby):
         if len(lobbies[lobby].users)==0 and len(lobbies.keys())>1:
             lobbies.pop(lobby)
 
-
+def handle_lobby_response(name,lobby,password,addr,socket):
+    if add_to_lobby(addr,conn,lobby, password):
+        send_to_client(conn,  {"type": "response", "data":"lobby", "message":"Joined: "+lobby})
+        send_to_clients(lobby,addr,{"type":"announcement", "message":name+" Joined"})
+    else:
+        send_to_client(conn,{"type:":"response","data":"lobby", "message":"wrong password"})
+        
 def handle_client(conn, addr):
     global lobbies
     name=""
@@ -75,18 +83,14 @@ def handle_client(conn, addr):
                 name=data["name"]
                 lobby=data["message"]
                 password=data["password"]
-                if add_to_lobby(addr,conn,lobby, password):
-                    send_to_client(conn,  {"type": "response", "data":"lobby", "message":"Joined: "+lobby})
-                    send_to_clients(lobby,addr,{"type":"announcement", "message":name+" Joined"})
-                else:
-                    send_to_client(conn,{"type:":"response","data":"lobby", "message":"wrong password"})
+                handle_lobby_response(name,lobby,password,addr,conn)
         if data["type"]=="message" and data["message"]:
             send_to_clients(lobby, addr, {"type":"message","message":data["message"], "from":data["name"]})
         
 def send_to_clients(lobby,addr,  message):
      message = json.dumps(message)
      print("sending: "+message)
-     print(lobbies[lobby].users)
+     print(lobbies[lobby].users.keys())
      for i in lobbies[lobby].users.keys():
         #print(addr)
         #print(i)
@@ -104,7 +108,7 @@ PORT = 42069
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((HOST, PORT))
-    s.listen(5)
+    s.listen(10)
     print(f"Server listening on {HOST}:{PORT}...")
     while True:
         conn, addr = s.accept()
