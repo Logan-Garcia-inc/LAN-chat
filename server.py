@@ -1,6 +1,5 @@
 import socket
 import json
-import os
 import time
 import threading
 import urllib.request
@@ -25,30 +24,55 @@ class Lobby:
     def __init__(self,name,password):
         self.name=name
         self.password=password
-        self.users={}#users{("127.0.0.1", 23456), socket}
-        
+        self.users={}
+
+class User:
+    def __init__(self, conn, addr):
+        self.password=""
+        self.name=""
+        self.addr=addr
+        self.conn=conn
+        self.lobby=""
+    def set_password(self, password):
+        self.password=password
+    def set_name(self,name):
+        self.name=name
+    def set_addr(self,addr):
+        self.addr=addr
+    def set_conn(self,conn):
+        self.conn=conn
+    def set_lobby(self,lobby):
+        self.lobby=lobby
+
 lobbies={"default":Lobby("default","")}
-def add_to_lobby(addr, conn,lobby, password):
+def add_to_lobby(user):
+    password=user.password
+    addr=user.addr
+    lobby=user.lobby
+    conn=user.conn
     with lock:
-#delete line        print("'"+lobbies[lobby].password+"' '"+password+"'")
-        if lobby in lobbies:
-            print("'"+lobbies[lobby].password+"' '"+password+"'")
-            if (password==lobbies[lobby].password):
-                
-                lobbies[lobby].users[addr]=conn
-                
-            else:
-                return False
-        else:
+        if not (lobby in lobbies):
+            print(f"creating {lobby} password: {password}")
             lobbies[lobby]=Lobby(lobby, password)
-    return True
+
+        if (password==lobbies[lobby].password):
+            lobbies[lobby].users[addr]=conn
+            print(f"{addr} joined {lobby} with password '{password}'")
+            return True
+    return False
 
     
-def remove_from_lobby(addr, lobby):
+def remove_from_lobby(user):
+    addr=user.addr
+    lobby=user.lobby
     with lock:
+        print(f"removing {addr} from {lobbies[lobby].users.keys()} ")
         lobbies[lobby].users.pop(addr)
-        if len(lobbies[lobby].users)==0 and len(lobbies.keys())>1:
+        if len(lobbies[lobby].users.keys())==0 and len(lobbies.keys())>1:
             lobbies.pop(lobby)
+
+def query_to_join_server(user, passwordFail=False):
+    send_to_client(user,{"type":"query", "data":json.dumps({name: bool(lobby.password) for name, lobby in lobbies.items()}), "message":f"{'Incorrect password' if passwordFail else ''}Available lobbies:\n\n"+"\\"+"\n\nJoin or create lobby: "})
 
 def handle_lobby_response(name,lobby,password,addr,socket):
     if add_to_lobby(addr,conn,lobby, password):
@@ -59,48 +83,52 @@ def handle_lobby_response(name,lobby,password,addr,socket):
         
 def handle_client(conn, addr):
     global lobbies
-    name=""
+    user=User(conn,addr)
     lobby=""
-    send_to_client(conn,{"type":"query", "data":json.dumps({name: bool(lobby.password) for name, lobby in lobbies.items()}), "message":"Available lobbies:\n\n"+"\\"+"\n\nJoin or create lobby: "})
+    query_to_join_server(user)
     while True:
+        data=""
         try:
             data = conn.recv(1024)
             data=data.decode("utf-8")
-        except e:
+        except Exception as e:
             print(e)
       
         if not data:
-            if lobby:
-                remove_from_lobby(addr,lobby)
-                send_to_clients(lobby, addr, {"type":"announcement", "message":name+" left"})
+            if user.lobby:
+                remove_from_lobby(user)
+                send_to_clients(lobby, addr, {"type":"announcement", "message":user.name+" left"})
             conn.close()
             break
-        print("Receiving: "+data)
+        #print("Receiving: "+data)
         data=json.loads(data)
        
         if(data["type"]=="response"):
             if(data["data"]=="lobby"):
-                name=data["name"]
-                lobby=data["message"]
-                password=data["password"]
-                handle_lobby_response(name,lobby,password,addr,conn)
+                user.set_name(data["name"])
+                user.lobby=data["message"]
+                user.password=data["password"]
+                if add_to_lobby(user):
+                    send_to_client(user,  {"type": "response", "data":"lobby", "message":"Joined: "+lobby})
+                    send_to_clients(user,{"type":"announcement", "message":user.name+" Joined"})
+                else:
+                    user.lobby=""
+                    query_to_join_server(user,passwordFail=True)
         if data["type"]=="message" and data["message"]:
-            send_to_clients(lobby, addr, {"type":"message","message":data["message"], "from":data["name"]})
+            send_to_clients(user, {"type":"message","message":data["message"], "from":data["name"]})
         
-def send_to_clients(lobby,addr,  message):
+def send_to_clients(user,  message):
+     lobby=user.lobby
+     addr=user.addr
      message = json.dumps(message)
-     print("sending: "+message)
-     print(lobbies[lobby].users.keys())
      for i in lobbies[lobby].users.keys():
-        #print(addr)
-        #print(i)
         if(addr!=i):
            lobbies[lobby].users[i].sendall(message.encode("utf-8"))
 
-def send_to_client(conn, message):
+def send_to_client(user, message):
     message = json.dumps(message)
     print("sending: "+message)
-    conn.sendall(message.encode("utf-8"))
+    user.conn.sendall(message.encode("utf-8"))
 
 HOST = '0.0.0.0'
 PORT = 42069
@@ -112,6 +140,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     print(f"Server listening on {HOST}:{PORT}...")
     while True:
         conn, addr = s.accept()
+        conn.settimeout(60)
+        print(addr)
         print("Connected to "+str(addr)) #threading.Thread(target=send_to_client, args=(conn,addr)).start()
         threading.Thread(target=handle_client, args=(conn, addr)).start()
     s.close()

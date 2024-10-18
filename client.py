@@ -1,5 +1,6 @@
 name=""
-HOST="127.0.0.1"
+HOST="23.ip.gl.ply.gg"
+PORT="15151"
 import json
 import socket
 import os
@@ -54,7 +55,7 @@ def receive_from_server(s):
         except ConnectionResetError as e:
             s.close()
             break
- #       print("receiving: "+ data)
+        #print("receiving: "+ data)
         data=json.loads(data)
         if not data:
             print("Server disconnected")
@@ -74,10 +75,9 @@ def receive_from_server(s):
             message=""
             lobbies = json.loads(data["data"])
             for name, is_protected in lobbies.items():
-                lock_symbol = "🔒" if is_protected else ""
+                lock_symbol = "\U0001f512" if is_protected else ""
                 message += f"{name} {lock_symbol}\n"
             lobby =input(data["message"].replace("\\",message))
-            print(lobbies, lobby)
             if(lobby in lobbies):
                 if (lobbies[lobby]):
                     password=input("password: ") 
@@ -92,7 +92,6 @@ def send_to_server(s, type="message", data="", message=""):
         s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password}).encode("utf-8"))
 
 
-PORT = 42069
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         print("Searching for host on " + HOST)
