@@ -52,7 +52,7 @@ def receive_from_server(s):
             data = s.recv(1024).decode("utf-8")
             
         except ConnectionResetError as e:
-            print(e)
+            s.close()
             break
  #       print("receiving: "+ data)
         data=json.loads(data)
@@ -101,4 +101,3 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         receive_from_server(s)
     except ConnectionRefusedError:
         print("Connection refused")
-    
