@@ -53,7 +53,7 @@ def receive_from_server(s):
             data = s.recv(1024).decode("utf-8")
             
         except ConnectionResetError as e:
-            print(e)
+            s.close()
             break
         #print("receiving: "+ data)
         data=json.loads(data)
@@ -78,7 +78,6 @@ def receive_from_server(s):
                 lock_symbol = "\U0001f512" if is_protected else ""
                 message += f"{name} {lock_symbol}\n"
             lobby =input(data["message"].replace("\\",message))
-            
             if(lobby in lobbies):
                 if (lobbies[lobby]):
                     password=input("password: ") 
@@ -101,4 +100,3 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         receive_from_server(s)
     except ConnectionRefusedError:
         print("Connection refused")
-    
