@@ -97,7 +97,7 @@ def handle_client(conn, addr):
         if not data:
             if user.lobby:
                 remove_from_lobby(user)
-                send_to_clients(lobby, addr, {"type":"announcement", "message":user.name+" left"})
+                send_to_clients(user, {"type":"announcement", "message":user.name+" left"})
             conn.close()
             break
         #print("Receiving: "+data)
