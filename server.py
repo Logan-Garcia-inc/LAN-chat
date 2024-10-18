@@ -1,6 +1,5 @@
 import socket
 import json
-import os
 import time
 import threading
 import urllib.request

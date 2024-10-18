@@ -1,5 +1,6 @@
 name=""
-HOST="127.0.0.1"
+HOST="23.ip.gl.ply.gg"
+PORT="15151"
 import json
 import socket
 import os
@@ -92,7 +93,6 @@ def send_to_server(s, type="message", data="", message=""):
         s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password}).encode("utf-8"))
 
 
-PORT = 42069
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         print("Searching for host on " + HOST)
