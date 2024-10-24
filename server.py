@@ -1,3 +1,9 @@
+import os
+try:
+    import psutil
+except ImportError:
+    os.system("pip install psutil")
+    import psutil
 import socket
 import json
 import time
@@ -23,15 +29,22 @@ if not prod:
                         quit()
                 else:
                     print("Running old version")
-
+def getLanIp(interface_name='wlan0'):
+    interfaces = psutil.net_if_addrs()
+    if interface_name in interfaces:
+        for snic in interfaces[interface_name]:
+            if snic.family == socket.AF_INET:  # Look for the IPv4 address
+                return snic.address
+    return None
 def broadcast():
     sock= socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    message=sock.getsockname()[0].encode("utf-8")
+    message=getLanIp().encode("utf-8")
     while True:
         sock.sendto(message, ('<broadcast>', PORT))
+        print(message)
         time.sleep(1)
 class Lobby:
     def __init__(self,name,password):
@@ -148,6 +161,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind((HOST, PORT))
     s.listen(10)
     print(f"Server listening on {HOST}:{PORT}...")
+    threading.Thread(target=broadcast,args=()).start()
     while True:
         conn, addr = s.accept()
         conn.settimeout(60)

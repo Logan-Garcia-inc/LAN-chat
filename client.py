@@ -34,15 +34,18 @@ if not name:
 def findServer():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    sock.bind(("",42069))
     print("searching")
     data=sock.recv(1024).decode("utf-8")
     print(data)
-    
-    with open(path, "r") as file:
-        lines=file.readlines()
-    lines[1]='HOST="'+HOST+'"\n'
-    with open(path, "w") as file:
-        file.writelines(lines)
+    HOST=data
+    sock.close()
+
+#    with open(path, "r") as file:
+ #       lines=file.readlines()
+  #  lines[1]='HOST="'+HOST+'"\n'
+   # with open(path, "w") as file:
+    #    file.writelines(lines)
 def send_loop(s):
     print("Enter message to send: \n")
     while True:
@@ -95,7 +98,7 @@ def send_to_server(s, type="message", data="", message=""):
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
-        print("Searching for host on " + HOST)
+        print("Searching for host")
         findServer()
         s.connect((HOST, PORT))
         print("connected\n")
