@@ -3,9 +3,12 @@ import json
 import time
 import threading
 import urllib.request
+import time
 path=__file__
 lock= threading.Lock()
 prod=True
+HOST = '0.0.0.0'
+PORT = 42069
 if not prod:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/server.py"
     with urllib.request.urlopen(source) as url:
@@ -20,6 +23,16 @@ if not prod:
                         quit()
                 else:
                     print("Running old version")
+
+def broadcast():
+    sock= socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    message=sock.getsockname()[0].encode("utf-8")
+    while True:
+        sock.sendto(message, ('<broadcast>', PORT))
+        time.sleep(1)
 class Lobby:
     def __init__(self,name,password):
         self.name=name
@@ -129,9 +142,6 @@ def send_to_client(user, message):
     message = json.dumps(message)
     print("sending: "+message)
     user.conn.sendall(message.encode("utf-8"))
-
-HOST = '0.0.0.0'
-PORT = 42069
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
