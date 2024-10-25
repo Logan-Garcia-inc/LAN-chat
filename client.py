@@ -7,6 +7,7 @@ import time
 import threading
 import urllib.request
 password=""
+lobby=""
 path=__file__
 prod=True
 PORT=42069
@@ -35,12 +36,24 @@ def findServer():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     sock.bind(("",42069))
-    print("searching")
     data=sock.recv(1024).decode("utf-8")
     print(data)
     HOST=data
     sock.close()
-
+def lobbyQuery(data):
+    message=""
+    global lobby
+    lobbies = json.loads(data["data"])
+    for name, is_protected in lobbies.items():
+        lock_symbol = "\U0001f512" if is_protected else ""
+        message += f"{name} {lock_symbol}\n"
+    lobby =input(data["message"].replace("\\",message))
+    if(lobby in lobbies):
+        if (lobbies[lobby]):
+            password=input("password: ")
+    else:
+        password=input("Set password: ")
+    send_to_server(s,"response","lobby",lobby)
 #    with open(path, "r") as file:
  #       lines=file.readlines()
   #  lines[1]='HOST="'+HOST+'"\n'
@@ -51,7 +64,6 @@ def send_loop(s):
     while True:
         send_to_server(s)
 def receive_from_server(s):
-    global password
     while True:
         try:
             data = s.recv(1024)
@@ -66,7 +78,8 @@ def receive_from_server(s):
             data=json.loads(data.decode("utf-8"))
         except JSONDecodeError:
             print("JSON decode error: "+data)
-def handleResponse():
+        handleResponse(data)
+def handleResponse(data):
     if data["type"]=="message":
         print(data["from"]+": "+data["message"])
     if data["type"]=="announcement":
@@ -74,21 +87,11 @@ def handleResponse():
     if data["type"]=="response":
         if data["data"]=="lobby":
             if data["message"].split(":")[0]=="Joined":
-                print(data["message"])
+                print(data["message"]+lobby)
                 threading.Thread(target=send_loop, args=(s,)).start()
     if data["type"]=="query":
         message=""
-        lobbies = json.loads(data["data"])
-        for name, is_protected in lobbies.items():
-            lock_symbol = "\U0001f512" if is_protected else ""
-            message += f"{name} {lock_symbol}\n"
-        #filter message?? lobby =input(data["message"].replace("\\",message))
-        if(lobby in lobbies):
-            if (lobbies[lobby]):
-                password=input("password: ") 
-        else:
-            password=input("Set password: ")
-        send_to_server(s,"response","lobby",lobby)
+        lobbyQuery(data)
 
 def send_to_server(s, type="message", data="", message=""):
         if not message:
