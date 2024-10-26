@@ -1,11 +1,20 @@
+import os
+try:
+    import psutil
+except ImportError:
+    os.system("pip install psutil")
+    import psutil
 import socket
 import json
 import time
 import threading
 import urllib.request
+import time
 path=__file__
 lock= threading.Lock()
-prod=False
+prod=True
+HOST = '0.0.0.0'
+PORT = 42069
 if not prod:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/server.py"
     with urllib.request.urlopen(source) as url:
@@ -20,6 +29,23 @@ if not prod:
                         quit()
                 else:
                     print("Running old version")
+def getLanIp(interface_name='wlan0'):
+    interfaces = psutil.net_if_addrs()
+    if interface_name in interfaces:
+        for snic in interfaces[interface_name]:
+            if snic.family == socket.AF_INET:  # Look for the IPv4 address
+                return snic.address
+    return None
+def broadcast():
+    sock= socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    message=getLanIp().encode("utf-8")
+    while True:
+        sock.sendto(message, ('<broadcast>', PORT))
+        print(message)
+        time.sleep(1)
 class Lobby:
     def __init__(self,name,password):
         self.name=name
@@ -61,25 +87,24 @@ def add_to_lobby(user):
             return True
     return False
 
-    
 def remove_from_lobby(user):
     addr=user.addr
     lobby=user.lobby
     with lock:
         print(f"removing {addr} from {lobbies[lobby].users.keys()} ")
         lobbies[lobby].users.pop(addr)
-        if len(lobbies[lobby].users.keys())==0 and len(lobbies.keys())>1:
+        if len(lobbies[lobby].users.keys())==0 and lobby!="default":
             lobbies.pop(lobby)
 
 def query_to_join_server(user, passwordFail=False):
     send_to_client(user,{"type":"query", "data":json.dumps({name: bool(lobby.password) for name, lobby in lobbies.items()}), "message":f"{'Incorrect password' if passwordFail else ''}Available lobbies:\n\n"+"\\"+"\n\nJoin or create lobby: "})
 
-def handle_lobby_response(name,lobby,password,addr,socket):
-    if add_to_lobby(addr,conn,lobby, password):
+def handle_lobby_response(user,socket):
+    if add_to_lobby(user):
         send_to_client(conn,  {"type": "response", "data":"lobby", "message":"Joined: "+lobby})
-        send_to_clients(lobby,addr,{"type":"announcement", "message":name+" Joined"})
+        send_to_clients(user,{"type":"announcement", "message":name+" Joined"})
     else:
-        send_to_client(conn,{"type:":"response","data":"lobby", "message":"wrong password"})
+        send_to_client(user,{"type:":"response","data":"lobby", "message":"wrong password"})
         
 def handle_client(conn, addr):
     global lobbies
@@ -130,14 +155,12 @@ def send_to_client(user, message):
     print("sending: "+message)
     user.conn.sendall(message.encode("utf-8"))
 
-HOST = '0.0.0.0'
-PORT = 42069
-
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((HOST, PORT))
     s.listen(10)
     print(f"Server listening on {HOST}:{PORT}...")
+    threading.Thread(target=broadcast,args=()).start()
     while True:
         conn, addr = s.accept()
         conn.settimeout(60)
