@@ -9,8 +9,7 @@ import urllib.request
 password=""
 lobby=""
 path=__file__
-prod=True
-PORT=42069
+prod=False
 PORT=42069
 if not prod:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"

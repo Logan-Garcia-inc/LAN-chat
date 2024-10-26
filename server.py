@@ -12,7 +12,7 @@ import urllib.request
 import time
 path=__file__
 lock= threading.Lock()
-prod=True
+prod=False
 HOST = '0.0.0.0'
 PORT = 42069
 if not prod:
@@ -157,7 +157,6 @@ def send_to_client(user, message):
 
 HOST = '0.0.0.0'
 PORT = 42069
-
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((HOST, PORT))
