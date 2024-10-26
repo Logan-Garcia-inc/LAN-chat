@@ -128,7 +128,6 @@ def handle_client(conn, addr):
             break
         #print("Receiving: "+data)
         data=json.loads(data)
-       
         if(data["type"]=="response"):
             if(data["data"]=="lobby"):
                 user.set_name(data["name"])
