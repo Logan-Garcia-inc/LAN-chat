@@ -11,6 +11,7 @@ lobby=""
 path=__file__
 prod=True
 PORT=42069
+PORT=42069
 if not prod:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
     with urllib.request.urlopen(source) as url:
