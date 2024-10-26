@@ -34,15 +34,15 @@ if not name:
             file.writelines(lines)
 def findServer():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("",42069))
-    data=sock.recv(1024).decode("utf-8")
-    print(data)
-    HOST=data
+    serverIP=sock.recv(1024).decode("utf-8")
     sock.close()
+    return serverIP
 def lobbyQuery(data):
     message=""
     global lobby
+    global password
     lobbies = json.loads(data["data"])
     for name, is_protected in lobbies.items():
         lock_symbol = "\U0001f512" if is_protected else ""
@@ -76,7 +76,7 @@ def receive_from_server(s):
             s.close()
         try:
             data=json.loads(data.decode("utf-8"))
-        except JSONDecodeError:
+        except json.JSONDecodeError:
             print("JSON decode error: "+data)
         handleResponse(data)
 def handleResponse(data):
@@ -90,7 +90,6 @@ def handleResponse(data):
                 print(data["message"]+lobby)
                 threading.Thread(target=send_loop, args=(s,)).start()
     if data["type"]=="query":
-        message=""
         lobbyQuery(data)
 
 def send_to_server(s, type="message", data="", message=""):
@@ -102,7 +101,7 @@ def send_to_server(s, type="message", data="", message=""):
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         print("Searching for host")
-        findServer()
+        HOST = findServer()
         s.connect((HOST, PORT))
         print("connected\n")
         receive_from_server(s)

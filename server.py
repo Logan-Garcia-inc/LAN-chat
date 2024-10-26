@@ -29,16 +29,17 @@ if not prod:
                         quit()
                 else:
                     print("Running old version")
-def getLanIp(interface_name='wlan0'):
+def getLanIp():
     interfaces = psutil.net_if_addrs()
-    if interface_name in interfaces:
-        for snic in interfaces[interface_name]:
-            if snic.family == socket.AF_INET:  # Look for the IPv4 address
-                return snic.address
-    return None
+    stats = psutil.net_if_stats()
+    for interface_name, snics in interfaces.items():
+        if interface_name in stats and stats[interface_name].isup:
+            print(interface_name)
+            for snic in snics:
+                if snic.family == socket.AF_INET:
+                    return snic.address
 def broadcast():
     sock= socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     message=getLanIp().encode("utf-8")
@@ -101,8 +102,8 @@ def query_to_join_server(user, passwordFail=False):
 
 def handle_lobby_response(user,socket):
     if add_to_lobby(user):
-        send_to_client(conn,  {"type": "response", "data":"lobby", "message":"Joined: "+lobby})
-        send_to_clients(user,{"type":"announcement", "message":name+" Joined"})
+        send_to_client(conn,  {"type": "response", "data":"lobby", "message":"Joined: "+user.lobby})
+        send_to_clients(user,{"type":"announcement", "message":user.name+" Joined"})
     else:
         send_to_client(user,{"type:":"response","data":"lobby", "message":"wrong password"})
         
@@ -121,8 +122,8 @@ def handle_client(conn, addr):
       
         if not data:
             if user.lobby:
-                remove_from_lobby(user)
                 send_to_clients(user, {"type":"announcement", "message":user.name+" left"})
+                remove_from_lobby(user)
             conn.close()
             break
         #print("Receiving: "+data)
