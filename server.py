@@ -39,14 +39,17 @@ def getLanIp():
                 if snic.family == socket.AF_INET:
                     return snic.address
 def broadcast():
-    sock= socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    message=getLanIp().encode("utf-8")
-    while True:
-        sock.sendto(message, ('<broadcast>', PORT))
-        print(message)
-        time.sleep(1)
+    try:
+        sock= socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        message=getLanIp().encode("utf-8")
+        while True:
+            sock.sendto(message, ('<broadcast>', PORT))
+            print(message)
+            time.sleep(1)
+    except OSError:
+        print("UDP broadcast failed. Server will not be discoverable.")
 class Lobby:
     def __init__(self,name,password):
         self.name=name
