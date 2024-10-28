@@ -1,5 +1,5 @@
 name=""
-HOST=""
+HOST="127.0.0.1"
 import json
 import socket
 import os
@@ -24,14 +24,16 @@ if not prod:
                         print("Updated code. Please restart.")
                         time.sleep(5)
                         quit()
-if not name:
-    name=input("Set name: ")
-    if not prod:
-        with open(path, "r") as file:
-            lines=file.readlines()
-        lines[0]='name="'+name+'"\n'
-        with open(path, "w") as file:
-            file.writelines(lines)
+def askName():
+    global name
+    if not name:
+        name=input("Set name: ")
+        if not prod:
+            with open(path, "r") as file:
+                lines=file.readlines()
+                lines[0]='name="'+name+'"\n'
+            with open(path, "w") as file:
+                file.writelines(lines)
 def findServer():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -54,11 +56,6 @@ def lobbyQuery(data):
     else:
         password=input("Set password: ")
     send_to_server(s,"response","lobby",lobby)
-#    with open(path, "r") as file:
- #       lines=file.readlines()
-  #  lines[1]='HOST="'+HOST+'"\n'
-   # with open(path, "w") as file:
-    #    file.writelines(lines)
 def send_loop(s):
     print("Enter message to send: \n")
     while True:
@@ -87,11 +84,10 @@ def handleResponse(data):
     if data["type"]=="response":
         if data["data"]=="lobby":
             if data["message"].split(":")[0]=="Joined":
-                print(data["message"]+lobby)
+                print(data["message"])
                 threading.Thread(target=send_loop, args=(s,)).start()
     if data["type"]=="query":
         lobbyQuery(data)
-
 def send_to_server(s, type="message", data="", message=""):
         if not message:
             message = input()
@@ -101,8 +97,10 @@ def send_to_server(s, type="message", data="", message=""):
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         print("Searching for host")
-        HOST = findServer()
+        if not HOST:
+            HOST = findServer()
         s.connect((HOST, PORT))
+        askName()
         print("connected\n")
         receive_from_server(s)
     except ConnectionRefusedError:
