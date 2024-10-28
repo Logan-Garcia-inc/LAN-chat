@@ -45,10 +45,11 @@ def lobbyQuery(data):
     message=""
     global lobby
     global password
-    lobbies = json.loads(data["data"])
-    for name, is_protected in lobbies.items():
-        lock_symbol = "\U0001f512" if is_protected else ""
-        message += f"{name} {lock_symbol}\n"
+    lobbies = data["data"]
+    print(lobbies)
+    for lobby in lobbies:
+        lock_symbol = "\U0001f512" if lobby["isProtected"] else ""
+        message += f"{lobby['name']} {lock_symbol} {lobby['people']}\U0001F464\n"
     lobby =input(data["message"].replace("\\",message))
     if(lobby in lobbies):
         if (lobbies[lobby]):
@@ -93,7 +94,6 @@ def send_to_server(s, type="message", data="", message=""):
             message = input()
 #        print("sending: "+message)
         s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password}).encode("utf-8"))
-
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         print("Searching for host")

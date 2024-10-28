@@ -1,9 +1,4 @@
 import os
-try:
-    import psutil
-except ImportError:
-    os.system("pip install psutil")
-    import psutil
 import socket
 import json
 import time
@@ -58,7 +53,7 @@ class Lobby:
         self.users={}
 
 class User:
-    uniqueID=0
+    uniqueID=1
     def __init__(self, conn, addr):
         self.password=""
         self.name=""
@@ -74,6 +69,8 @@ def add_to_lobby(user):
     id=user.id
     lobby=user.lobby
     conn=user.conn
+    if not lobby:
+        return False
     with lock:
         if not (lobby in lobbies):
             print(f"creating {lobby} password: {password}")
@@ -95,7 +92,7 @@ def remove_from_lobby(user):
             lobbies.pop(lobby)
 
 def query_to_join_server(user, passwordFail=False):
-    send_to_client(user,{"type":"query", "data":json.dumps({name: bool(lobby.password) for name, lobby in lobbies.items()}), "message":f"{'Incorrect password' if passwordFail else ''}Available lobbies:\n\n"+"\\"+"\n\nJoin or create lobby: "})
+    send_to_client(user,{"type":"query", "data":[{"name": name, "isProtected": bool(lobby.password), "people":len(lobby.users)} for name, lobby in lobbies.items()], "message":f"{'Incorrect password\\n' if passwordFail else ''}Available lobbies:\n\n"+"\\"+"\n\nJoin or create lobby: "})
 
 def handle_lobby_response(user):
     if add_to_lobby(user):
@@ -149,6 +146,11 @@ def send_to_client(user, message):
 
 HOST = '0.0.0.0'
 PORT = 42069
+try:
+    import psutil
+except ImportError:
+    os.system("pip install psutil")
+    import psutil
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((HOST, PORT))
@@ -158,7 +160,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     while True:
         conn, addr = s.accept()
         conn.settimeout(60)
-        print(addr)
         print("Connected to "+str(addr)) #threading.Thread(target=send_to_client, args=(conn,addr)).start()
         threading.Thread(target=handle_client, args=(conn, addr)).start()
     s.close()
