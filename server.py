@@ -18,6 +18,7 @@ if not prod:
             if (file.read() != code):
                 if (input("update code? y/n :").lower()=="y"):
                     with open(path, "w") as file:
+                        print(code)
                         file.write(code)
                         print("Updated code. Please restart.")
                         time.sleep(5)
@@ -91,8 +92,23 @@ def remove_from_lobby(user):
         if len(lobbies[lobby].users.keys())==0 and lobby!="default":
             lobbies.pop(lobby)
 
+def getInfo(user):
+    send_to_client(user, {"type":"query","data":"info"})
+    
 def query_to_join_server(user, passwordFail=False):
-    send_to_client(user,{"type":"query", "data":[{"name": name, "isProtected": bool(lobby.password), "people":len(lobby.users)} for name, lobby in lobbies.items()], "message":f"{'Incorrect password\\n' if passwordFail else ''}Available lobbies:\n\n"+"\\"+"\n\nJoin or create lobby: "})
+    print( [(name+"\U0001f512 " if bool(lobby.password) else name+" ")+
+                                 str(len(lobby.users))+
+                                 "\U0001F464\n" for name,lobby in lobbies.items()][0])
+    send_to_client(user,{"type":"query",
+                         "data":"lobby",
+                         "message":('Incorrect password\\n' if passwordFail else '')+
+                                "Available lobbies:\n\n"+ 
+                               [(name+"\U0001f512 " if bool(lobby.password) else name+" ")+
+                                 str(len(lobby.users))+
+                                 "\U0001F464\n" for name,lobby in lobbies.items()][0]+
+                                 "\n\nJoin or create lobby: "
+                                })
+   
 
 def handle_lobby_response(user):
     if add_to_lobby(user):
@@ -105,9 +121,11 @@ def handle_lobby_response(user):
 def handle_client(conn, addr):
     global lobbies
     user=User(conn,addr)
-    lobby=""
-    query_to_join_server(user)
     while True:
+        if(user.name and not user.lobby):
+            query_to_join_server(user)
+        else:
+            getInfo(user)
         data=""
         try:
             data = conn.recv(1024)
@@ -124,8 +142,9 @@ def handle_client(conn, addr):
         data=json.loads(data)
         user.password=data["password"]
         if(data["type"]=="response"):
-            if(data["data"]=="lobby"):
+            if data["data"]=="info":
                 user.name=data["name"]
+            if(data["data"]=="lobby"):
                 user.lobby=data["message"]
                 handle_lobby_response(user)
         if data["type"]=="message" and data["message"]:

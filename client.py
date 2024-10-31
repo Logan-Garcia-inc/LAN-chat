@@ -42,20 +42,10 @@ def findServer():
     sock.close()
     return serverIP
 def lobbyQuery(data):
-    message=""
     global lobby
     global password
-    lobbies = data["data"]
-    print(lobbies)
-    for lobby in lobbies:
-        lock_symbol = "\U0001f512" if lobby["isProtected"] else ""
-        message += f"{lobby['name']} {lock_symbol} {lobby['people']}\U0001F464\n"
-    lobby =input(data["message"].replace("\\",message))
-    if(lobby in lobbies):
-        if (lobbies[lobby]):
-            password=input("password: ")
-    else:
-        password=input("Set password: ")
+    message=data["message"]
+    lobby = input(message)
     send_to_server(s,"response","lobby",lobby)
 def send_loop(s):
     print("Enter message to send: \n")
@@ -88,9 +78,13 @@ def handleResponse(data):
                 print(data["message"])
                 threading.Thread(target=send_loop, args=(s,)).start()
     if data["type"]=="query":
-        lobbyQuery(data)
+        print(data)
+        if data["data"]=="lobby":
+            lobbyQuery(data)
+        if data["data"]=="info":
+            send_to_server(s, type="response", data="info")
 def send_to_server(s, type="message", data="", message=""):
-        if not message:
+        if not message and type=="message":
             message = input()
 #        print("sending: "+message)
         s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password}).encode("utf-8"))
