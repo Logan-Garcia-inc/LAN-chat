@@ -96,16 +96,11 @@ def getInfo(user):
     send_to_client(user, {"type":"query","data":"info"})
     
 def query_to_join_server(user, passwordFail=False):
-    print( [(name+"\U0001f512 " if bool(lobby.password) else name+" ")+
-                                 str(len(lobby.users))+
-                                 "\U0001F464\n" for name,lobby in lobbies.items()][0])
     send_to_client(user,{"type":"query",
                          "data":"lobby",
-                         "message":('Incorrect password\\n' if passwordFail else '')+
-                                "Available lobbies:\n\n"+ 
-                               [(name+"\U0001f512 " if bool(lobby.password) else name+" ")+
-                                 str(len(lobby.users))+
-                                 "\U0001F464\n" for name,lobby in lobbies.items()][0]+
+"lobbies":"",
+                         "message":('Incorrect password\n' if passwordFail else '')+
+                                "Available lobbies:\n\n"+ "//"+
                                  "\n\nJoin or create lobby: "
                                 })
    
