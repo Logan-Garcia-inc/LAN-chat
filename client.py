@@ -19,8 +19,10 @@ if not prod:
             localCode="".join(file.readlines()[2:])
             if ( localCode != code):
                 if (input("update code? y/n :").lower()=="y"):
-                    with open(path, "w") as file:
+                    with open(path+".temp", "w") as file:
                         file.write(code)
+                        os.remove(path)
+                        os.rename(path+".temp",path)
                         print("Updated code. Please restart.")
                         time.sleep(5)
                         quit()

@@ -17,11 +17,12 @@ if not prod:
         with open(path, "r") as file:
             if (file.read() != code):
                 if (input("update code? y/n :").lower()=="y"):
-                    with open(path, "w") as file:
-                        print(code)
+                    with open(path+".temp", "w") as file:
                         file.write(code)
+                        os.remove(path)
+                        os.rename(path+".temp",path)
                         print("Updated code. Please restart.")
-                        time.sleep(5)
+                        time.sleep(3)
                         quit()
                 else:
                     print("Running old version")
