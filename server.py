@@ -5,12 +5,11 @@ import time
 import threading
 import urllib.request
 import time
-path =__file__
+path=__file__
 lock= threading.Lock()
-prod=False
+prod=True
 HOST = '0.0.0.0'
 PORT = 42069
-print(path)
 if not prod:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/server.py"
     with urllib.request.urlopen(source) as url:
@@ -18,10 +17,9 @@ if not prod:
         with open(path, "r") as file:
             if (file.read() != code):
                 if (input("update code? y/n :").lower()=="y"):
-                    with open(path+".temp", "w") as file:
+                    with open(path, "w") as file:
+                        print(code)
                         file.write(code)
-                        os.remove(path)
-                        os.rename(path+".temp", path)
                         print("Updated code. Please restart.")
                         time.sleep(5)
                         quit()
@@ -175,7 +173,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     threading.Thread(target=broadcast,args=()).start()
     while True:
         conn, addr = s.accept()
-        conn.settimeout(5)
+        conn.settimeout(60)
         print("Connected to "+str(addr)) #threading.Thread(target=send_to_client, args=(conn,addr)).start()
         threading.Thread(target=handle_client, args=(conn, addr)).start()
     s.close()
