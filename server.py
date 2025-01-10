@@ -27,12 +27,12 @@ if not prod:
                 else:
                     print("Running old version")
 
-def get_lan_ip():
-      """
-        Get the local LAN IPv4 address of the machine.
-        Returns:
-            str: The LAN IP address.
-        """
+def getLanIp():
+    """
+    Get the local LAN IPv4 address of the machine.
+    Returns:
+    str: The LAN IP address.
+    """
     try:
             # Create a socket connection to an external server to determine the local IP
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -75,10 +75,9 @@ class User:
         User.uniqueID+=1
 
 lobbies={"default":Lobby("default","")}
-def add_to_lobby(user):
+def add_to_lobby(user,lobby):
     password=user.password
     id=user.id
-    lobby=user.lobby
     conn=user.conn
     if not lobby:
         return False
@@ -105,23 +104,27 @@ def remove_from_lobby(user):
 def getInfo(user):
     send_to_client(user, {"type":"query","data":"info"})
     
-def query_to_join_server(user, passwordFail=False):
-    send_to_client(user,{"type":"query",
-                         "data":"lobby",
-"lobbies":"",
+def handle_lobby_query(user, passwordFail=False):
+    send_to_client(user,{"type":"response",
+                         "data":"lobbyList",
+"lobbies": [
+    [lobby.name, bool(lobby.password), len(lobby.users)]
+    for lobby in lobbies.values()
+],
                          "message":('Incorrect password\n' if passwordFail else '')+
                                 "Available lobbies:\n\n"+ "//"+
                                  "\n\nJoin or create lobby: "
                                 })
    
 
-def handle_lobby_response(user):
-    if add_to_lobby(user):
-        send_to_client(user,  {"type": "response", "data":"lobby", "message":"Joined: "+user.lobby})
+def handle_lobby_response(user,lobby):
+    if add_to_lobby(user,lobby):
+        user.lobby=lobby
+        send_to_client(user,  {"type": "response", "data":"lobbyJoin", "message":"Joined: "+user.lobby})
         send_to_clients(user,{"type":"announcement", "message":user.name+" Joined"})
     else:
-        user.lobby=""
-        query_to_join_server(user,passwordFail=True)
+        send_to_client(user,{"type": "response", "data":"lobbyJoin", "message":"fail"})
+#        query_to_join_server(user,passwordFail=True)
         
 def handle_client(conn, addr):
     global lobbies
@@ -141,20 +144,18 @@ def handle_client(conn, addr):
             break
         #print("Receiving: "+data)
         data=json.loads(data)
-        if(user.name and not user.lobby):
-            query_to_join_server(user)
-        else:
-            getInfo(user)
-        user.password=data["password"]
+        if data["name"]:
+            user.name=data["name"]
         if(data["type"]=="response"):
             if data["data"]=="info":
                 user.name=data["name"]
-            if(data["data"]=="lobby"):
-                user.lobby=data["message"]
-                handle_lobby_response(user)
+            if data["data"]=="lobby":
+                handle_lobby_response(user,data["message"])
         if data["type"]=="message" and data["message"]:
             send_to_clients(user, {"type":"message","message":data["message"], "from":data["name"]})
-       
+        if data["type"]=="query":
+            if data["data"]=="lobby":
+                handle_lobby_query(user, data["message"])
 def send_to_clients(user,  message):
      lobby=user.lobby
      id=user.id

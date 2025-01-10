@@ -8,6 +8,7 @@ import threading
 import urllib.request
 password=""
 lobby=""
+secret=""
 path=__file__
 prod=True
 PORT=42069
@@ -43,16 +44,29 @@ def findServer():
     serverIP=sock.recv(1024).decode("utf-8")
     sock.close()
     return serverIP
-def lobbyQuery(data):
+def lobbyJoin(data):
     global lobby
     global password
     message=data["message"]
-    lobby = input(message)
+    lobbyChoice = input(message.replace("//","\n".join([(name+"\U0001f512 " if password else name+" ")+
+                                 str(users)+
+                                 "\U0001F464\n" for name,lobby,users in data["lobbies"]])))
+    for lobby in data["lobbies"]:
+        if lobby[0] == lobbyChoice:  # Check if lobby exists
+            if lobby[1]:  # Check if password-protected
+                password=input("password: ")
+                
+        else:
+            password=input("password (blank for none): ")
+    lobby=lobbyChoice
     send_to_server(s,"response","lobby",lobby)
 def send_loop(s):
     print("Enter message to send: \n")
     while True:
         send_to_server(s)
+def get_lobbies(s):
+    send_to_server(s,type="query", data="lobby")
+
 def receive_from_server(s):
     while True:
         try:
@@ -69,22 +83,30 @@ def receive_from_server(s):
         except json.JSONDecodeError:
             print("JSON decode error: "+data)
         handleResponse(data)
+
 def handleResponse(data):
     if data["type"]=="message":
         print(data["from"]+": "+data["message"])
     if data["type"]=="announcement":
         print(data["message"])
+
     if data["type"]=="response":
-        if data["data"]=="lobby":
+        if data["data"]=="lobbyJoin":
             if data["message"].split(":")[0]=="Joined":
                 print(data["message"])
                 threading.Thread(target=send_loop, args=(s,)).start()
+            else:
+                get_servers()
+        if data["data"]=="lobbyList":
+            lobbyJoin(data)
+        if data["data"]=="secret":
+            secret=data["message"]
+        
     if data["type"]=="query":
         print(data)
-        if data["data"]=="lobby":
-            lobbyQuery(data)
         if data["data"]=="info":
             send_to_server(s, type="response", data="info")
+
 def send_to_server(s, type="message", data="", message=""):
         if not message and type=="message":
             message = input()
@@ -98,6 +120,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
         askName()
         print("connected\n")
+        get_lobbies(s)
         receive_from_server(s)
     except ConnectionRefusedError:
         print("Connection refused")
