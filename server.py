@@ -26,15 +26,22 @@ if not prod:
                         quit()
                 else:
                     print("Running old version")
-def getLanIp():
-    interfaces = psutil.net_if_addrs()
-    stats = psutil.net_if_stats()
-    for interface_name, snics in interfaces.items():
-        if interface_name in stats and stats[interface_name].isup:
-            print(interface_name)
-            for snic in snics:
-                if snic.family == socket.AF_INET:
-                    return snic.address
+
+def get_lan_ip():
+      """
+        Get the local LAN IPv4 address of the machine.
+        Returns:
+            str: The LAN IP address.
+        """
+    try:
+            # Create a socket connection to an external server to determine the local IP
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                # Doesn't need to actually connect, just triggers local IP resolution
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except Exception as e:
+        raise RuntimeError(f"Unable to determine LAN IP: {e}")
+
 def broadcast():
     try:
         sock= socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -47,7 +54,9 @@ def broadcast():
             time.sleep(1)
     except OSError as e:
         print("UDP broadcast failed. Server will not be discoverable.")
+        print("error cause: ", end="")
         print(e)
+
 class Lobby:
     def __init__(self,name,password):
         self.name=name
@@ -118,10 +127,6 @@ def handle_client(conn, addr):
     global lobbies
     user=User(conn,addr)
     while True:
-        if(user.name and not user.lobby):
-            query_to_join_server(user)
-        else:
-            getInfo(user)
         data=""
         try:
             data = conn.recv(1024)
@@ -136,6 +141,10 @@ def handle_client(conn, addr):
             break
         #print("Receiving: "+data)
         data=json.loads(data)
+        if(user.name and not user.lobby):
+            query_to_join_server(user)
+        else:
+            getInfo(user)
         user.password=data["password"]
         if(data["type"]=="response"):
             if data["data"]=="info":
