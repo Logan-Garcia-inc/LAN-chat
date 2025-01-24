@@ -4,6 +4,7 @@ import json
 import time
 import threading
 import urllib.request
+from cryptography.fernet import fernet
 import time
 path=__file__
 lock= threading.Lock()
@@ -73,6 +74,7 @@ class User:
         self.lobby=""
         self.id=User.uniqueID
         User.uniqueID+=1
+        self.secret=Fernet(fernet.generate_key())
 
 lobbies={"default":Lobby("default","")}
 def add_to_lobby(user,lobby):
@@ -143,7 +145,10 @@ def handle_client(conn, addr):
             conn.close()
             break
         #print("Receiving: "+data)
+        if user.secret:
+            data=user.secret.decrypt(data.decode("utf-8").decode())
         data=json.loads(data)
+        user.password=data["password"]
         if data["name"]:
             user.name=data["name"]
         if(data["type"]=="response"):
@@ -167,6 +172,8 @@ def send_to_clients(user,  message):
 def send_to_client(user, message):
     message = json.dumps(message)
     print("sending: "+message)
+    if user.secret:
+        message=user.secret.encrypt(message.encode())
     user.conn.sendall(message.encode("utf-8"))
 
 HOST = '0.0.0.0'

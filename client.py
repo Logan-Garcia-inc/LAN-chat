@@ -6,6 +6,7 @@ import os
 import time
 import threading
 import urllib.request
+from cryptography.fernet import fernet
 password=""
 lobby=""
 secret=""
@@ -44,6 +45,7 @@ def findServer():
     serverIP=sock.recv(1024).decode("utf-8")
     sock.close()
     return serverIP
+
 def lobbyJoin(data):
     global lobby
     global password
@@ -64,10 +66,12 @@ def send_loop(s):
     print("Enter message to send: \n")
     while True:
         send_to_server(s)
+
 def get_lobbies(s):
     send_to_server(s,type="query", data="lobby")
 
 def receive_from_server(s):
+    global secret
     while True:
         try:
             data = s.recv(1024)
@@ -79,12 +83,17 @@ def receive_from_server(s):
             print("Server disconnected")
             s.close()
         try:
-            data=json.loads(data.decode("utf-8"))
+            if secret:
+                data=secret.decrypt(data.decode("utf-8").decode())
+            data=json.loads(data)
         except json.JSONDecodeError:
             print("JSON decode error: "+data)
         handleResponse(data)
 
-def handleResponse(data):
+def handleResponse(data)
+    global secret:
+    if not secret:
+        send_to_server(s, "query","secret")
     if data["type"]=="message":
         print(data["from"]+": "+data["message"])
     if data["type"]=="announcement":
@@ -96,11 +105,11 @@ def handleResponse(data):
                 print(data["message"])
                 threading.Thread(target=send_loop, args=(s,)).start()
             else:
-                get_servers()
+                get_lobbies()
         if data["data"]=="lobbyList":
             lobbyJoin(data)
         if data["data"]=="secret":
-            secret=data["message"]
+            secret=Fernet(data["message"])
         
     if data["type"]=="query":
         print(data)
@@ -111,7 +120,11 @@ def send_to_server(s, type="message", data="", message=""):
         if not message and type=="message":
             message = input()
 #        print("sending: "+message)
-        s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password}).encode("utf-8"))
+        data =json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password})
+        if secret:
+            data=secret.encrypt(data.encode())
+        s.sendall(data.encode("utf-8"))
+
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         print("Searching for host")
