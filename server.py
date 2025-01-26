@@ -4,7 +4,11 @@ import json
 import time
 import threading
 import urllib.request
-from cryptography.fernet import fernet
+try:
+    from cryptography.fernet import Fernet
+except ImportError:
+    os.system("pip install cryptography")
+    from cryptography.fernet import Fernet
 import time
 path=__file__
 lock= threading.Lock()
@@ -74,7 +78,7 @@ class User:
         self.lobby=""
         self.id=User.uniqueID
         User.uniqueID+=1
-        self.secret=Fernet(fernet.generate_key())
+        self.secret="" 
 
 lobbies={"default":Lobby("default","")}
 def add_to_lobby(user,lobby):
@@ -135,7 +139,6 @@ def handle_client(conn, addr):
         data=""
         try:
             data = conn.recv(1024)
-            data=data.decode("utf-8")
         except Exception as e:
             print(e)
         if not data:
@@ -145,8 +148,11 @@ def handle_client(conn, addr):
             conn.close()
             break
         #print("Receiving: "+data)
-        if user.secret:
-            data=user.secret.decrypt(data.decode("utf-8").decode())
+        try:
+            data=user.secret.decrypt(data).decode()
+        except Exception as e:
+            print (e)
+            data=data.decode("utf-8")
         data=json.loads(data)
         user.password=data["password"]
         if data["name"]:
@@ -161,6 +167,10 @@ def handle_client(conn, addr):
         if data["type"]=="query":
             if data["data"]=="lobby":
                 handle_lobby_query(user, data["message"])
+            if data["data"]=="secret":
+                key =Fernet.generate_key()
+                send_to_client(user, {"type":"response","data":"secret","message":key.decode("utf-8")})
+                user.secret=Fernet(key)
 def send_to_clients(user,  message):
      lobby=user.lobby
      id=user.id
@@ -174,7 +184,9 @@ def send_to_client(user, message):
     print("sending: "+message)
     if user.secret:
         message=user.secret.encrypt(message.encode())
-    user.conn.sendall(message.encode("utf-8"))
+        user.conn.sendall(message)
+    else:
+        user.conn.sendall(message.encode("utf-8"))
 
 HOST = '0.0.0.0'
 PORT = 42069

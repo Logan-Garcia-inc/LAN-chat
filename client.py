@@ -6,7 +6,7 @@ import os
 import time
 import threading
 import urllib.request
-from cryptography.fernet import fernet
+from cryptography.fernet import Fernet
 password=""
 lobby=""
 secret=""
@@ -69,7 +69,8 @@ def send_loop(s):
 
 def get_lobbies(s):
     send_to_server(s,type="query", data="lobby")
-
+def get_secret(s):
+     send_to_server(s,type="query", data="secret")
 def receive_from_server(s):
     global secret
     while True:
@@ -82,18 +83,18 @@ def receive_from_server(s):
         if not data:
             print("Server disconnected")
             s.close()
+        if secret:
+            data=secret.decrypt(data.decode())
+        else:
+            data=data.decode("utf-8")
         try:
-            if secret:
-                data=secret.decrypt(data.decode("utf-8").decode())
             data=json.loads(data)
         except json.JSONDecodeError:
             print("JSON decode error: "+data)
         handleResponse(data)
 
-def handleResponse(data)
-    global secret:
-    if not secret:
-        send_to_server(s, "query","secret")
+def handleResponse(data):
+    global secret
     if data["type"]=="message":
         print(data["from"]+": "+data["message"])
     if data["type"]=="announcement":
@@ -109,7 +110,7 @@ def handleResponse(data)
         if data["data"]=="lobbyList":
             lobbyJoin(data)
         if data["data"]=="secret":
-            secret=Fernet(data["message"])
+            secret=Fernet(data["message"].encode("utf-8"))
         
     if data["type"]=="query":
         print(data)
@@ -123,8 +124,9 @@ def send_to_server(s, type="message", data="", message=""):
         data =json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password})
         if secret:
             data=secret.encrypt(data.encode())
-        s.sendall(data.encode("utf-8"))
-
+            s.sendall(data)
+        else:
+            s.sendall(data.encode("utf-8"))
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         print("Searching for host")
@@ -133,6 +135,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
         askName()
         print("connected\n")
+        get_secret(s)
         get_lobbies(s)
         receive_from_server(s)
     except ConnectionRefusedError:
