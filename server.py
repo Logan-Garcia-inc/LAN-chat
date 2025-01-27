@@ -55,7 +55,7 @@ def broadcast():
         message=getLanIp().encode("utf-8")
         while True:
             sock.sendto(message, ('<broadcast>', PORT))
-            print(message)
+            #print(message)
             time.sleep(1)
     except OSError as e:
         print("UDP broadcast failed. Server will not be discoverable.")
@@ -89,12 +89,12 @@ def add_to_lobby(user,lobby):
         return False
     with lock:
         if not (lobby in lobbies):
-            print(f"creating {lobby} password: {password}")
+            #print(f"creating {lobby} password: {password}")
             lobbies[lobby]=Lobby(lobby, password)
 
         if (password==lobbies[lobby].password):
             lobbies[lobby].users[id]=conn
-            print(f"{id} joined {lobby} with password '{password}'")
+            #print(f"{id} joined {lobby} with password '{password}'")
             return True
     return False
 
@@ -102,7 +102,7 @@ def remove_from_lobby(user):
     id=user.id
     lobby=user.lobby
     with lock:
-        print(f"removing {id} from {lobbies[lobby].users.keys()} ")
+       # print(f"removing {id} from {lobbies[lobby].users.keys()} ")
         lobbies[lobby].users.pop(id)
         if len(lobbies[lobby].users.keys())==0 and lobby!="default":
             lobbies.pop(lobby)
@@ -151,7 +151,7 @@ def handle_client(conn, addr):
         try:
             data=user.secret.decrypt(data).decode()
         except Exception as e:
-            print (e)
+            #print (e)
             data=data.decode("utf-8")
         data=json.loads(data)
         user.password=data["password"]
@@ -180,13 +180,14 @@ def send_to_clients(user,  message):
            lobbies[lobby].users[i].sendall(message.encode("utf-8"))
 
 def send_to_client(user, message):
-    message = json.dumps(message)
-    print("sending: "+message)
-    if user.secret:
-        message=user.secret.encrypt(message.encode())
-        user.conn.sendall(message)
-    else:
-        user.conn.sendall(message.encode("utf-8"))
+    with lock:
+        message = json.dumps(message)
+        if  user.secret != "":
+            message=user.secret.encrypt(message.encode())
+            user.conn.sendall(message)
+        else:
+            user.conn.sendall(message.encode("utf-8"))
+        
 
 HOST = '0.0.0.0'
 PORT = 42069

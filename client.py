@@ -6,7 +6,11 @@ import os
 import time
 import threading
 import urllib.request
-from cryptography.fernet import Fernet
+try:
+    from cryptography.fernet import Fernet
+except ImportError:
+    os.system("pip install cryptography")
+    from cryptography.fernet import Fernet
 password=""
 lobby=""
 secret=""
@@ -70,6 +74,12 @@ def send_loop(s):
     while True:
         send_to_server(s)
 
+def fix_padding(data):
+    missing_padding = len(data) % 4
+    if missing_padding:
+        data += '=' * (4 - missing_padding)
+    return data
+
 def get_lobbies(s):
     send_to_server(s,type="query", data="lobby")
 def get_secret(s):
@@ -88,9 +98,12 @@ def receive_from_server(s):
             print("Server disconnected")
             s.close()
         if secret:
-            data=secret.decrypt(data.decode())
+            #data=fix_padding(data)
+            print(data)
+            data=secret.decrypt(data)
         else:
             data=data.decode("utf-8")
+
         try:
             data=json.loads(data)
         except json.JSONDecodeError:
@@ -114,7 +127,8 @@ def handleResponse(s,data):
         if data["data"]=="lobbyList":
             lobbyJoin(data)
         if data["data"]=="secret":
-            secret=Fernet(data["message"].encode("utf-8"))
+            print(data["message"].encode().decode())
+            secret=Fernet(data["message"].encode())
         
     if data["type"]=="query":
         print(data)
