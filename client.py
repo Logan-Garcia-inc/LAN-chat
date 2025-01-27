@@ -48,20 +48,23 @@ def findServer():
 
 def lobbyJoin(data):
     global lobby
-    global password
+    global password 
+    lobbyExists = False
     message=data["message"]
     lobbyChoice = input(message.replace("//","\n".join([(name+"\U0001f512 " if password else name+" ")+
                                  str(users)+
                                  "\U0001F464\n" for name,lobby,users in data["lobbies"]])))
     for lobby in data["lobbies"]:
         if lobby[0] == lobbyChoice:  # Check if lobby exists
+            lobbyExists=True
             if lobby[1]:  # Check if password-protected
                 password=input("password: ")
-                
-        else:
-            password=input("password (blank for none): ")
+                break
+    if not lobbyExists:
+        password=input("set password (blank for none): ")
     lobby=lobbyChoice
     send_to_server(s,"response","lobby",lobby)
+
 def send_loop(s):
     print("Enter message to send: \n")
     while True:
@@ -71,6 +74,7 @@ def get_lobbies(s):
     send_to_server(s,type="query", data="lobby")
 def get_secret(s):
      send_to_server(s,type="query", data="secret")
+
 def receive_from_server(s):
     global secret
     while True:
@@ -79,7 +83,7 @@ def receive_from_server(s):
         except ConnectionResetError as e:
             s.close()
             break
-        #print("receiving: "+ data)
+        print("receiving: "+ data.decode("utf-8"))
         if not data:
             print("Server disconnected")
             s.close()
@@ -91,9 +95,9 @@ def receive_from_server(s):
             data=json.loads(data)
         except json.JSONDecodeError:
             print("JSON decode error: "+data)
-        handleResponse(data)
+        handleResponse(s,data)
 
-def handleResponse(data):
+def handleResponse(s,data):
     global secret
     if data["type"]=="message":
         print(data["from"]+": "+data["message"])
@@ -106,7 +110,7 @@ def handleResponse(data):
                 print(data["message"])
                 threading.Thread(target=send_loop, args=(s,)).start()
             else:
-                get_lobbies()
+                get_lobbies(s)
         if data["data"]=="lobbyList":
             lobbyJoin(data)
         if data["data"]=="secret":
