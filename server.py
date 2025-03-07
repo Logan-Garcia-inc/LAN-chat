@@ -177,12 +177,12 @@ def send_to_clients(user,  message):
      message = json.dumps(message)
      for i in lobbies[lobby].users.keys():
         if(id!=i):
-           lobbies[lobby].users[i].sendall(message.encode("utf-8"))
+           send_to_client(lobbies[lobby].users[i],message)
 
 def send_to_client(user, message):
     message = json.dumps(message)
     print("sending: "+message)
-    if user.secret:
+    if user.secret !="":
         message=user.secret.encrypt(message.encode())
         user.conn.sendall(message)
     else:
