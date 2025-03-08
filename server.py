@@ -1,4 +1,4 @@
-debug=False
+debug=True
 import os
 import socket
 import json
