@@ -1,3 +1,4 @@
+debug=False
 import os
 import socket
 import json
@@ -9,19 +10,17 @@ try:
 except ImportError:
     os.system("pip install cryptography")
     from cryptography.fernet import Fernet
-import time
 path=__file__
 lock= threading.Lock()
-prod=True
 HOST = '0.0.0.0'
 PORT = 42069
-if not prod:
+if not debug:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/server.py"
     with urllib.request.urlopen(source) as url:
         code=url.read().decode("utf-8")
         with open(path, "r") as file:
             if (file.read() != code):
-                if (input("update code? y/n :").lower()=="y"):
+                if (input("update code? y/n: ").lower()=="y"):
                     with open(path+".temp", "w") as file:
                         file.write(code)
                         os.remove(path)
@@ -31,7 +30,9 @@ if not prod:
                         quit()
                 else:
                     print("Running old version")
-
+def debug_print(*args ,**kwargs):
+    if debug:
+        print(*args,**kwargs)
 def getLanIp():
     """
     Get the local LAN IPv4 address of the machine.
@@ -59,8 +60,8 @@ def broadcast():
             time.sleep(1)
     except OSError as e:
         print("UDP broadcast failed. Server will not be discoverable.")
-        print("error cause: ", end="")
-        print(e)
+        debug_print("error cause: ", end="")
+        debug_print(e)
 
 class Lobby:
     def __init__(self,name,password):
@@ -93,7 +94,7 @@ def add_to_lobby(user,lobby):
             lobbies[lobby]=Lobby(lobby, password)
 
         if (password==lobbies[lobby].password):
-            lobbies[lobby].users[id]=conn
+            lobbies[lobby].users[id]=user
             #print(f"{id} joined {lobby} with password '{password}'")
             return True
     return False
@@ -147,12 +148,14 @@ def handle_client(conn, addr):
                 remove_from_lobby(user)
             conn.close()
             break
-        #print("Receiving: "+data)
+        debug_print("Receiving: ", end="")
+        debug_print(data)
         try:
             data=user.secret.decrypt(data).decode()
         except Exception as e:
             #print (e)
             data=data.decode("utf-8")
+        debug_print("decoded: "+data)
         data=json.loads(data)
         user.password=data["password"]
         if data["name"]:
@@ -171,17 +174,17 @@ def handle_client(conn, addr):
                 key =Fernet.generate_key()
                 send_to_client(user, {"type":"response","data":"secret","message":key.decode("utf-8")})
                 user.secret=Fernet(key)
+        debug_print("\n")
 def send_to_clients(user,  message):
      lobby=user.lobby
      id=user.id
-     message = json.dumps(message)
-     for i in lobbies[lobby].users.keys():
-        if(id!=i):
-           send_to_client(lobbies[lobby].users[i],message)
+     for user in lobbies[lobby].users.keys():
+        if(id!=user):
+           send_to_client(lobbies[lobby].users[user],message)
 
 def send_to_client(user, message):
     message = json.dumps(message)
-    print("sending: "+message)
+    debug_print("sending: "+message)
     if user.secret !="":
         message=user.secret.encrypt(message.encode())
         user.conn.sendall(message)

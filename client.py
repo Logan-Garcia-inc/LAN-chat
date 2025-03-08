@@ -1,5 +1,6 @@
 name=""
-HOST="127.0.0.1"
+HOST=""
+debug=False
 import json
 import socket
 import os
@@ -15,16 +16,15 @@ password=""
 lobby=""
 secret=""
 path=__file__
-prod=True
 PORT=42069
-if not prod:
+if not debug:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
     with urllib.request.urlopen(source) as url:
         code= "\n".join(url.read().decode("utf-8").split("\n")[2:])
         with open(path, "r") as file:
             localCode="".join(file.readlines()[2:])
             if ( localCode != code):
-                if (input("update code? y/n :").lower()=="y"):
+                if (input("update code? y/n: ").lower()=="y"):
                     with open(path+".temp", "w") as file:
                         file.write(code)
                         os.remove(path)
@@ -32,11 +32,14 @@ if not prod:
                         print("Updated code. Please restart.")
                         time.sleep(5)
                         quit()
+def debug_print(*args,**kwargs):
+    if debug:
+        print(*args,**kwargs)
 def askName():
     global name
     if not name:
         name=input("Set name: ")
-        if not prod:
+        if not debug:
             with open(path, "r") as file:
                 lines=file.readlines()
                 lines[0]='name="'+name+'"\n'
@@ -74,12 +77,6 @@ def send_loop(s):
     while True:
         send_to_server(s)
 
-def fix_padding(data):
-    missing_padding = len(data) % 4
-    if missing_padding:
-        data += '=' * (4 - missing_padding)
-    return data
-
 def get_lobbies(s):
     send_to_server(s,type="query", data="lobby")
 def get_secret(s):
@@ -93,21 +90,20 @@ def receive_from_server(s):
         except ConnectionResetError as e:
             s.close()
             break
-        print("receiving: "+ data.decode("utf-8"))
+        debug_print("receiving: ",end="" )
+        debug_print(data) 
         if not data:
             print("Server disconnected")
             s.close()
+
         if secret:
-            #data=fix_padding(data)
-            print(data)
+            debug_print(data)
             data=secret.decrypt(data)
         else:
             data=data.decode("utf-8")
 
-        try:
-            data=json.loads(data)
-        except json.JSONDecodeError:
-            print("JSON decode error: "+data)
+        data=json.loads(data)
+        debug_print(data)
         handleResponse(s,data)
 
 def handleResponse(s,data):
@@ -127,7 +123,6 @@ def handleResponse(s,data):
         if data["data"]=="lobbyList":
             lobbyJoin(data)
         if data["data"]=="secret":
-            print(data["message"].encode().decode())
             secret=Fernet(data["message"].encode())
         
     if data["type"]=="query":
@@ -138,7 +133,7 @@ def handleResponse(s,data):
 def send_to_server(s, type="message", data="", message=""):
         if not message and type=="message":
             message = input()
-#        print("sending: "+message)
+#        debug_print("sending: "+message)
         data =json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password})
         if secret:
             data=secret.encrypt(data.encode())
@@ -152,6 +147,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             HOST = findServer()
         s.connect((HOST, PORT))
         askName()
+        time.sleep(0.1)
         print("connected\n")
         get_secret(s)
         get_lobbies(s)
