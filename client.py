@@ -1,37 +1,50 @@
 name=""
 HOST=""
+debug=False
 import json
 import socket
 import os
 import time
 import threading
 import urllib.request
+try:
+    from cryptography.fernet import Fernet
+except ImportError:
+    os.system("pip install cryptography")
+    from cryptography.fernet import Fernet
 password=""
 lobby=""
+secret=""
 path=__file__
-prod=False
 PORT=42069
-if not prod:
+if not debug:
     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
     with urllib.request.urlopen(source) as url:
         code= "\n".join(url.read().decode("utf-8").split("\n")[2:])
         with open(path, "r") as file:
             localCode="".join(file.readlines()[2:])
             if ( localCode != code):
-                if (input("update code? y/n :").lower()=="y"):
-                    with open(path, "w") as file:
+                if (input("update code? y/n: ").lower()=="y"):
+                    with open(path+".temp", "w") as file:
                         file.write(code)
+                        os.remove(path)
+                        os.rename(path+".temp",path)
                         print("Updated code. Please restart.")
                         time.sleep(5)
                         quit()
-if not name:
-    name=input("Set name: ")
-    if not prod:
-        with open(path, "r") as file:
-            lines=file.readlines()
-        lines[0]='name="'+name+'"\n'
-        with open(path, "w") as file:
-            file.writelines(lines)
+def debug_print(*args,**kwargs):
+    if debug:
+        print(*args,**kwargs)
+def askName():
+    global name
+    if not name:
+        name=input("Set name: ")
+        if not debug:
+            with open(path, "r") as file:
+                lines=file.readlines()
+                lines[0]='name="'+name+'"\n'
+            with open(path, "w") as file:
+                file.writelines(lines)
 def findServer():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -39,71 +52,105 @@ def findServer():
     serverIP=sock.recv(1024).decode("utf-8")
     sock.close()
     return serverIP
-def lobbyQuery(data):
-    message=""
+
+def lobbyJoin(data):
     global lobby
-    global password
-    lobbies = json.loads(data["data"])
-    for name, is_protected in lobbies.items():
-        lock_symbol = "\U0001f512" if is_protected else ""
-        message += f"{name} {lock_symbol}\n"
-    lobby =input(data["message"].replace("\\",message))
-    if(lobby in lobbies):
-        if (lobbies[lobby]):
-            password=input("password: ")
-    else:
-        password=input("Set password: ")
+    global password 
+    lobbyExists = False
+    message=data["message"]
+    lobbyChoice = input(message.replace("//","\n".join([(name+"\U0001f512 " if password else name+" ")+
+                                 str(users)+
+                                 "\U0001F464\n" for name,lobby,users in data["lobbies"]])))
+    for lobby in data["lobbies"]:
+        if lobby[0] == lobbyChoice:  # Check if lobby exists
+            lobbyExists=True
+            if lobby[1]:  # Check if password-protected
+                password=input("password: ")
+                break
+    if not lobbyExists:
+        password=input("set password (blank for none): ")
+    lobby=lobbyChoice
     send_to_server(s,"response","lobby",lobby)
-#    with open(path, "r") as file:
- #       lines=file.readlines()
-  #  lines[1]='HOST="'+HOST+'"\n'
-   # with open(path, "w") as file:
-    #    file.writelines(lines)
+
 def send_loop(s):
     print("Enter message to send: \n")
     while True:
         send_to_server(s)
+
+def get_lobbies(s):
+    send_to_server(s,type="query", data="lobby")
+def get_secret(s):
+     send_to_server(s,type="query", data="secret")
+
 def receive_from_server(s):
+    global secret
     while True:
         try:
             data = s.recv(1024)
         except ConnectionResetError as e:
             s.close()
             break
-        #print("receiving: "+ data)
+        debug_print("receiving: ",end="" )
+        debug_print(data) 
         if not data:
             print("Server disconnected")
             s.close()
-        try:
-            data=json.loads(data.decode("utf-8"))
-        except json.JSONDecodeError:
-            print("JSON decode error: "+data)
-        handleResponse(data)
-def handleResponse(data):
+
+        if secret:
+            debug_print(data)
+            data=secret.decrypt(data)
+        else:
+            data=data.decode("utf-8")
+
+        data=json.loads(data)
+        debug_print(data)
+        handleResponse(s,data)
+
+def handleResponse(s,data):
+    global secret
     if data["type"]=="message":
         print(data["from"]+": "+data["message"])
     if data["type"]=="announcement":
         print(data["message"])
+
     if data["type"]=="response":
-        if data["data"]=="lobby":
+        if data["data"]=="lobbyJoin":
             if data["message"].split(":")[0]=="Joined":
-                print(data["message"]+lobby)
+                print(data["message"])
                 threading.Thread(target=send_loop, args=(s,)).start()
+            else:
+                get_lobbies(s)
+        if data["data"]=="lobbyList":
+            lobbyJoin(data)
+        if data["data"]=="secret":
+            secret=Fernet(data["message"].encode())
+        
     if data["type"]=="query":
-        lobbyQuery(data)
+        print(data)
+        if data["data"]=="info":
+            send_to_server(s, type="response", data="info")
 
 def send_to_server(s, type="message", data="", message=""):
-        if not message:
+        if not message and type=="message":
             message = input()
-#        print("sending: "+message)
-        s.sendall(json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password}).encode("utf-8"))
-
+#        debug_print("sending: "+message)
+        data =json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password})
+        if secret:
+            data=secret.encrypt(data.encode())
+            s.sendall(data)
+        else:
+            s.sendall(data.encode("utf-8"))
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:
         print("Searching for host")
-        HOST = findServer()
+        if not HOST:
+            HOST = findServer()
         s.connect((HOST, PORT))
+        askName()
+        time.sleep(0.1)
         print("connected\n")
+        get_secret(s)
+        get_lobbies(s)
         receive_from_server(s)
     except ConnectionRefusedError:
         print("Connection refused")
