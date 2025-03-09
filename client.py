@@ -1,6 +1,6 @@
 name=""
 HOST=""
-debug=True
+debug=False
 import json
 import socket
 import os
