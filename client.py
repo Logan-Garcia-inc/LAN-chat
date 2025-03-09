@@ -1,6 +1,6 @@
-name=""
+name="bob"
 HOST=""
-debug=False
+debug=True
 import json
 import socket
 import os
@@ -12,29 +12,47 @@ try:
 except ImportError:
     os.system("pip install cryptography")
     from cryptography.fernet import Fernet
+s=""
+should_exit = False
 password=""
 lobby=""
 secret=""
 path=__file__
 PORT=42069
-if not debug:
-    source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
-    with urllib.request.urlopen(source) as url:
-        code= "\n".join(url.read().decode("utf-8").split("\n")[2:])
-        with open(path, "r") as file:
-            localCode="".join(file.readlines()[2:])
-            if ( localCode != code):
-                if (input("update code? y/n: ").lower()=="y"):
-                    with open(path+".temp", "w") as file:
-                        file.write(code)
-                        os.remove(path)
-                        os.rename(path+".temp",path)
-                        print("Updated code. Please restart.")
-                        time.sleep(5)
-                        quit()
+# if not debug:
+#     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
+#     with urllib.request.urlopen(source) as url:
+#         code= "\n".join(url.read().decode("utf-8").split("\n")[2:])
+#         with open(path, "r") as file:
+#             localCode="".join(file.readlines()[2:])
+#             if ( localCode != code):
+#                 if (input("update code? y/n: ").lower()=="y"):
+#                     with open(path+".temp", "w") as file:
+#                         file.write(code)
+#                         os.remove(path)
+#                         os.rename(path+".temp",path)
+#                         print("Updated code. Please restart.")
+#                         time.sleep(5)
+#                         quit()
 def debug_print(*args,**kwargs):
     if debug:
         print(*args,**kwargs)
+def checkCommands(val):
+    if not val:
+        return
+    command, *args=val.split()
+    result="Command not known"
+    try:
+        match command:
+            case "quit":
+                global should_exit
+                should_exit=True
+                s.close()
+                result="Left "+lobby
+                main()
+    except Exception as e:
+        result="Command failed"
+    return result
 def askName():
     global name
     if not name:
@@ -73,8 +91,8 @@ def lobbyJoin(data):
     send_to_server(s,"response","lobby",lobby)
 
 def send_loop(s):
-    print("Enter message to send: \n")
-    while True:
+    while not should_exit:
+        print("Enter message to send: \n")
         send_to_server(s)
 
 def get_lobbies(s):
@@ -84,7 +102,7 @@ def get_secret(s):
 
 def receive_from_server(s):
     global secret
-    while True:
+    while not should_exit:
         try:
             data = s.recv(1024)
         except ConnectionResetError as e:
@@ -133,24 +151,34 @@ def handleResponse(s,data):
 def send_to_server(s, type="message", data="", message=""):
         if not message and type=="message":
             message = input()
+            checkCommands(message)
 #        debug_print("sending: "+message)
         data =json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password})
-        if secret:
-            data=secret.encrypt(data.encode())
-            s.sendall(data)
-        else:
-            s.sendall(data.encode("utf-8"))
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    try:
-        print("Searching for host")
-        if not HOST:
-            HOST = findServer()
-        s.connect((HOST, PORT))
-        askName()
-        time.sleep(0.1)
-        print("connected\n")
-        get_secret(s)
-        get_lobbies(s)
-        receive_from_server(s)
-    except ConnectionRefusedError:
-        print("Connection refused")
+        if not should_exit:
+            if secret:
+                data=secret.encrypt(data.encode())
+                s.sendall(data)
+            else:
+                s.sendall(data.encode("utf-8"))
+def main():
+    global HOST
+    global s
+    global secret
+    global should_exit
+    secret=""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            print("Searching for host")
+            if not HOST:
+                HOST = findServer()
+            s.connect((HOST, PORT))
+            askName()
+            time.sleep(0.1)
+            print("connected\n")
+            get_secret(s)
+            get_lobbies(s)
+            should_exit=False
+            receive_from_server(s)
+        except ConnectionRefusedError:
+            print("Connection refused")
+main()

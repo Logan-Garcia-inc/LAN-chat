@@ -1,4 +1,4 @@
-debug=False
+debug=True
 import os
 import socket
 import json
@@ -14,22 +14,22 @@ path=__file__
 lock= threading.Lock()
 HOST = '0.0.0.0'
 PORT = 42069
-if not debug:
-    source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/server.py"
-    with urllib.request.urlopen(source) as url:
-        code=url.read().decode("utf-8")
-        with open(path, "r") as file:
-            if (file.read() != code):
-                if (input("update code? y/n: ").lower()=="y"):
-                    with open(path+".temp", "w") as file:
-                        file.write(code)
-                        os.remove(path)
-                        os.rename(path+".temp",path)
-                        print("Updated code. Please restart.")
-                        time.sleep(3)
-                        quit()
-                else:
-                    print("Running old version")
+# if not debug:
+#     source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/server.py"
+#     with urllib.request.urlopen(source) as url:
+#         code=url.read().decode("utf-8")
+#         with open(path, "r") as file:
+#             if (file.read() != code):
+#                 if (input("update code? y/n: ").lower()=="y"):
+#                     with open(path+".temp", "w") as file:
+#                         file.write(code)
+#                         os.remove(path)
+#                         os.rename(path+".temp",path)
+#                         print("Updated code. Please restart.")
+#                         time.sleep(3)
+#                         quit()
+#                 else:
+#                     print("Running old version")
 def debug_print(*args ,**kwargs):
     if debug:
         print(*args,**kwargs)
