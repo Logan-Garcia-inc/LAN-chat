@@ -17,21 +17,7 @@ lobby=""
 secret=""
 path=__file__
 PORT=42069
-if not debug:
-    source="https://raw.githubusercontent.com/Logan-Garcia-inc/LAN-chat/main/client.py"
-    with urllib.request.urlopen(source) as url:
-        code= "\n".join(url.read().decode("utf-8").split("\n")[2:])
-        with open(path, "r") as file:
-            localCode="".join(file.readlines()[2:])
-            if ( localCode != code):
-                if (input("update code? y/n: ").lower()=="y"):
-                    with open(path+".temp", "w") as file:
-                        file.write(code)
-                        os.remove(path)
-                        os.rename(path+".temp",path)
-                        print("Updated code. Please restart.")
-                        time.sleep(5)
-                        quit()
+
 def debug_print(*args,**kwargs):
     if debug:
         print(*args,**kwargs)
