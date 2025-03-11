@@ -111,9 +111,10 @@ def receive_from_server(s):
         debug_print("receiving: ",end="" )
         debug_print(data) 
         if not data:
-            print("Server disconnected")
             s.close()
-
+        if should_exit:
+            s.close()
+            break
         if secret:
             debug_print(data)
             data=secret.decrypt(data)
