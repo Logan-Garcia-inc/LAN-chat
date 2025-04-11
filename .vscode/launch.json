@@ -1,0 +1,43 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "server.py",
+            "console": "integratedTerminal"
+        }, {
+            "name": "client 1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "client.py",
+            "console": "externalTerminal"
+        }, {
+            "name": "client 2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "client.py",
+            "console": "externalTerminal"
+        }
+        {
+            "name": "test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "test.py",
+            "console": "integratedTerminal"
+        },
+    ],
+    "compounds": [
+        {
+            "name": "server and 2 clients",
+            "configurations": ["server","client 1","client 2"]
+        }, {
+            "name": "server and 1 client",
+            "configurations": ["server","client 1"]
+        }
+    ]
+}
