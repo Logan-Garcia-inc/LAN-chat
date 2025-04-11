@@ -2,5 +2,5 @@ test.*
 .vscode
 !.vscode/launch.json
 build
-*/internal
+_internal
 *.spec
