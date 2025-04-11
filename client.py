@@ -1,6 +1,6 @@
 name=""
 HOST=""
-debug=False
+debug=True
 import json
 import socket
 import os
@@ -45,10 +45,16 @@ def checkCommands(val):
     result="Command not known"
     try:
         match command:
-            case "quit":
+            case "/quit":
                 send_to_server(s, "query","quitLobby")
                 print("Left "+lobby)
                 result="quit"
+            case "/help":
+                print(
+                    """
+        /help:    Display command usage
+        /quit:    Leave the current lobby""")
+
     except Exception as e:
         result="Command failed"
     return result
@@ -94,8 +100,9 @@ def send_loop(s):
         print("Enter message to send: \n")
         while True:
             message = input()
-            if checkCommands(message)=="quit":
-                return
+            if message[0]=="/":
+                if checkCommands(message)=="quit":
+                    return
             send_to_server(s, message=message)
 
 def get_lobbies(s):
@@ -114,8 +121,6 @@ def receive_from_server(s):
         debug_print("receiving: ",end="" )
         debug_print(data) 
         if not data:
-            s.close()
-        if should_exit:
             s.close()
         if secret:
             data=secret.decrypt(data)
