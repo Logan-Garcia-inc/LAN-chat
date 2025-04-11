@@ -1,6 +1,6 @@
-name="bob"
+name=""
 HOST=""
-debug=True
+debug=False
 import json
 import socket
 import os
@@ -12,8 +12,8 @@ try:
 except ImportError:
     os.system("pip install cryptography")
     from cryptography.fernet import Fernet
+send_loop_thread=""
 s=""
-should_exit = False
 password=""
 lobby=""
 secret=""
@@ -38,6 +38,7 @@ def debug_print(*args,**kwargs):
     if debug:
         print(*args,**kwargs)
 def checkCommands(val):
+    global send_loop_thread
     if not val:
         return
     command, *args=val.split()
@@ -45,14 +46,13 @@ def checkCommands(val):
     try:
         match command:
             case "quit":
-                global should_exit
-                should_exit=True
-                s.close()
-                result="Left "+lobby
-                main()
+                send_to_server(s, "query","quitLobby")
+                print("Left "+lobby)
+                result="quit"
     except Exception as e:
         result="Command failed"
     return result
+
 def askName():
     global name
     if not name:
@@ -91,40 +91,41 @@ def lobbyJoin(data):
     send_to_server(s,"response","lobby",lobby)
 
 def send_loop(s):
-    while not should_exit:
         print("Enter message to send: \n")
-        send_to_server(s)
+        while True:
+            message = input()
+            if checkCommands(message)=="quit":
+                return
+            send_to_server(s, message=message)
 
 def get_lobbies(s):
     send_to_server(s,type="query", data="lobby")
+
 def get_secret(s):
      send_to_server(s,type="query", data="secret")
 
 def receive_from_server(s):
     global secret
-    while not should_exit:
+    while True:
         try:
             data = s.recv(1024)
         except ConnectionResetError as e:
             s.close()
-            break
         debug_print("receiving: ",end="" )
         debug_print(data) 
         if not data:
             print("Server disconnected")
             s.close()
-
         if secret:
-            debug_print(data)
             data=secret.decrypt(data)
         else:
             data=data.decode("utf-8")
 
         data=json.loads(data)
-        debug_print(data)
         handleResponse(s,data)
 
 def handleResponse(s,data):
+    global send_loop_thread
     global secret
     if data["type"]=="message":
         print(data["from"]+": "+data["message"])
@@ -135,7 +136,8 @@ def handleResponse(s,data):
         if data["data"]=="lobbyJoin":
             if data["message"].split(":")[0]=="Joined":
                 print(data["message"])
-                threading.Thread(target=send_loop, args=(s,)).start()
+                send_loop_thread = threading.Thread(target=send_loop, args=(s,))
+                send_loop_thread.start()
             else:
                 get_lobbies(s)
         if data["data"]=="lobbyList":
@@ -148,23 +150,20 @@ def handleResponse(s,data):
         if data["data"]=="info":
             send_to_server(s, type="response", data="info")
 
-def send_to_server(s, type="message", data="", message=""):
-        if not message and type=="message":
-            message = input()
-            checkCommands(message)
+def send_to_server(s=socket, type="message", data="", message=""):
+        global secret
 #        debug_print("sending: "+message)
         data =json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password})
-        if not should_exit:
-            if secret:
-                data=secret.encrypt(data.encode())
-                s.sendall(data)
-            else:
-                s.sendall(data.encode("utf-8"))
+    
+        if secret:
+            data=secret.encrypt(data.encode())
+            s.sendall(data)
+        else:
+            s.sendall(data.encode("utf-8"))
 def main():
     global HOST
     global s
     global secret
-    global should_exit
     secret=""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
@@ -177,7 +176,6 @@ def main():
             print("connected\n")
             get_secret(s)
             get_lobbies(s)
-            should_exit=False
             receive_from_server(s)
         except ConnectionRefusedError:
             print("Connection refused")
