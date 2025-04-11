@@ -1,4 +1,4 @@
-debug=False
+debug=True
 import os
 import socket
 import json
@@ -87,11 +87,13 @@ def add_to_lobby(user,lobby):
 def remove_from_lobby(user):
     id=user.id
     lobby=user.lobby
+    send_to_clients(user, {"type":"announcement", "message":user.name+" left"})
     with lock:
-       # print(f"removing {id} from {lobbies[lobby].users.keys()} ")
+       # debug_print(f"removing {id} from {lobbies[lobby].users.keys()} ")
         lobbies[lobby].users.pop(id)
         if len(lobbies[lobby].users.keys())==0 and lobby!="default":
             lobbies.pop(lobby)
+        user.lobby=""
 
 def getInfo(user):
     send_to_client(user, {"type":"query","data":"info"})
@@ -129,7 +131,6 @@ def handle_client(conn, addr):
             print(e)
         if not data:
             if user.lobby:
-                send_to_clients(user, {"type":"announcement", "message":user.name+" left"})
                 remove_from_lobby(user)
             conn.close()
             break
@@ -145,24 +146,34 @@ def handle_client(conn, addr):
         user.password=data["password"]
         if data["name"]:
             user.name=data["name"]
-        if(data["type"]=="response"):
+
+        if(data["type"]=="response"):                                   #responses
             if data["data"]=="info":
                 user.name=data["name"]
             if data["data"]=="lobby":
                 handle_lobby_response(user,data["message"])
-        if data["type"]=="message" and data["message"]:
+
+        if data["type"]=="message" and data["message"]:              #messages
             send_to_clients(user, {"type":"message","message":data["message"], "from":data["name"]})
-        if data["type"]=="query":
-            if data["data"]=="lobby":
-                handle_lobby_query(user, data["message"])
-            if data["data"]=="secret":
-                key =Fernet.generate_key()
-                send_to_client(user, {"type":"response","data":"secret","message":key.decode("utf-8")})
-                user.secret=Fernet(key)
+
+        if data["type"]=="query":                                    #queries
+            match(data["data"]):
+                case "lobby":
+                    handle_lobby_query(user, data["message"])
+                case "secret":
+                    key =Fernet.generate_key()
+                    send_to_client(user, {"type":"response","data":"secret","message":key.decode("utf-8")})
+                    user.secret=Fernet(key)
+                case "quitLobby":
+                    remove_from_lobby(user)
+                    handle_lobby_query(user)
         debug_print("\n")
+
 def send_to_clients(user,  message):
      lobby=user.lobby
      id=user.id
+     if not lobby:
+        return
      for user in lobbies[lobby].users.keys():
         if(id!=user):
            send_to_client(lobbies[lobby].users[user],message)
