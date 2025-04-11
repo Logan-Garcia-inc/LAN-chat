@@ -1,0 +1,14 @@
+client:
+    generate key pair
+    send public key in plain text
+
+server:
+    generate key pair
+    recieve client pub key
+    send pub key in plain text
+
+server and client:
+    generate symmetric key from private key and public key
+    encrypt data with symmetric key (AES)
+    sign data with symmetric key (RSA)
+    
