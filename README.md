@@ -1,3 +1,3 @@
 # LAN-chat
 
-requ
+requires cryptography
