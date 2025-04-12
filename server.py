@@ -10,10 +10,16 @@ try:
 except ImportError:
     os.system("pip install cryptography")
     from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 path=__file__
 lock= threading.Lock()
 HOST = '0.0.0.0'
 PORT = 42069
+private_key = ec.generate_private_key(ec.SECP256R1())
+public_key = private_key.public_key()
 
 def debug_print(*args ,**kwargs):
     if debug:
@@ -32,6 +38,21 @@ def getLanIp():
             return s.getsockname()[0]
     except Exception as e:
         raise RuntimeError(f"Unable to determine LAN IP: {e}")
+    
+def encrypt(plaintext):
+    global aes_key
+    vector=os.urandom(12)
+    encryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector)).encryptor()
+    encryptedText=vector+encryptor.update(plaintext)+encryptor.tag()
+    return encryptedText
+
+def decrypt(message):
+    vector = message[:12]  
+    text = message[12:-16]  
+    tag = message[-16:]
+    decryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector, tag)).decryptor()
+    decrypted_message = decryptor.update(text) + decryptor.finalize()
+    return decrypted_message
 
 def broadcast():
     try:
@@ -64,7 +85,7 @@ class User:
         self.lobby=""
         self.id=User.uniqueID
         User.uniqueID+=1
-        self.secret="" 
+        self.aes_key="" 
 
 lobbies={"default":Lobby("default","")}
 def add_to_lobby(user,lobby):

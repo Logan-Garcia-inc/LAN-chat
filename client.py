@@ -12,17 +12,24 @@ try:
 except ImportError:
     os.system("pip install cryptography")
     from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 send_loop_thread=""
 s=""
 password=""
 lobby=""
-secret=""
+private_key = ec.generate_private_key(ec.SECP256R1())
+public_key = private_key.public_key()
+aes_key=""
 path=__file__
 PORT=42069
 
 def debug_print(*args,**kwargs):
     if debug:
         print(*args,**kwargs)
+
 def checkCommands(val):
     global send_loop_thread
     if not val:
@@ -40,7 +47,6 @@ def checkCommands(val):
                     """
         /help:    Display command usage
         /quit:    Leave the current lobby""")
-
     except Exception as e:
         result="Command failed"
     return result
@@ -97,6 +103,21 @@ def get_lobbies(s):
 def get_secret(s):
      send_to_server(s,type="query", data="secret")
 
+def encrypt(plaintext):
+    global aes_key
+    vector=os.urandom(12)
+    encryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector)).encryptor()
+    encryptedText=vector+encryptor.update(plaintext)+encryptor.tag()
+    return encryptedText
+
+def decrypt(message):
+    vector = message[:12]  
+    text = message[12:-16]  
+    tag = message[-16:]
+    decryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector, tag)).decryptor()
+    decrypted_message = decryptor.update(text) + decryptor.finalize()
+    return decrypted_message
+
 def receive_from_server(s):
     global secret
     while True:
@@ -118,29 +139,35 @@ def receive_from_server(s):
 
 def handleResponse(s,data):
     global send_loop_thread
-    global secret
-    if data["type"]=="message":
-        print(data["from"]+": "+data["message"])
-    if data["type"]=="announcement":
-        print(data["message"])
+    global private_key
+    global encryptor
+    global aes_key
+    match (data["type"]):
+        case "message":
+            print(data["from"]+": "+data["message"])
+        case "announcement":
+            print(data["message"])
 
-    if data["type"]=="response":
-        if data["data"]=="lobbyJoin":
-            if data["message"].split(":")[0]=="Joined":
-                print(data["message"])
-                send_loop_thread = threading.Thread(target=send_loop, args=(s,))
-                send_loop_thread.start()
-            else:
-                get_lobbies(s)
-        if data["data"]=="lobbyList":
-            lobbyJoin(data)
-        if data["data"]=="secret":
-            secret=Fernet(data["message"].encode())
-        
-    if data["type"]=="query":
-        print(data)
-        if data["data"]=="info":
-            send_to_server(s, type="response", data="info")
+        case "response":
+            if data["data"]=="lobbyJoin":
+                if data["message"].split(":")[0]=="Joined":
+                    print(data["message"])
+                    send_loop_thread = threading.Thread(target=send_loop, args=(s,))
+                    send_loop_thread.start()
+                else:
+                    get_lobbies(s)
+            if data["data"]=="lobbyList":
+                lobbyJoin(data)
+            if data["data"]=="secret":
+                server_public_key=serialization.load_pem_public_key(data["message"])
+                derived_key=private_key.exchange(ec.ECDH(), server_public_key)
+                aes_key=HKDF(algorithm=hashes.SHA256(),length=32, salt=None info=b'key exchange').derive(derived_key)
+               
+            
+        case "query":
+            print(data)
+            if data["data"]=="info":
+                send_to_server(s, type="response", data="info")
 
 def send_to_server(s=socket, type="message", data="", message=""):
         global secret
