@@ -22,6 +22,7 @@ password=""
 lobby=""
 private_key = ec.generate_private_key(ec.SECP256R1())
 public_key = private_key.public_key()
+server_public_key=""
 aes_key=""
 path=__file__
 PORT=42069
@@ -29,6 +30,25 @@ PORT=42069
 def debug_print(*args,**kwargs):
     if debug:
         print(*args,**kwargs)
+
+def encrypt(plaintext):
+    global aes_key
+    vector=os.urandom(12)
+    encryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector)).encryptor()
+    encryptedText=vector + encryptor.update(plaintext) + encryptor.tag()
+    return encryptedText
+
+def decrypt(message):
+    vector = message[:12]  
+    text = message[12:-16]  
+    tag = message[-16:]
+    decryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector, tag)).decryptor()
+    decrypted_message = decryptor.update(text) + decryptor.finalize()
+    return decrypted_message
+
+def exchange_secrets(s):
+    send_to_server(s,type="query", data="secret")
+
 
 def checkCommands(val):
     global send_loop_thread
@@ -61,6 +81,7 @@ def askName():
                 lines[0]='name="'+name+'"\n'
             with open(path, "w") as file:
                 file.writelines(lines)
+
 def findServer():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -100,11 +121,7 @@ def send_loop(s):
 def get_lobbies(s):
     send_to_server(s,type="query", data="lobby")
 
-def get_secret(s):
-     send_to_server(s,type="query", data="secret")
-
 def encrypt(plaintext):
-    global aes_key
     vector=os.urandom(12)
     encryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector)).encryptor()
     encryptedText=vector+encryptor.update(plaintext)+encryptor.tag()
@@ -119,7 +136,7 @@ def decrypt(message):
     return decrypted_message
 
 def receive_from_server(s):
-    global secret
+    global aes_key
     while True:
         try:
             data = s.recv(1024)
@@ -129,8 +146,8 @@ def receive_from_server(s):
         debug_print(data) 
         if not data:
             s.close()
-        if secret:
-            data=secret.decrypt(data)
+        if aes_key:
+            data=decrypt(data)
         else:
             data=data.decode("utf-8")
 
@@ -140,7 +157,6 @@ def receive_from_server(s):
 def handleResponse(s,data):
     global send_loop_thread
     global private_key
-    global encryptor
     global aes_key
     match (data["type"]):
         case "message":
@@ -174,16 +190,14 @@ def send_to_server(s=socket, type="message", data="", message=""):
 #        debug_print("sending: "+message)
         data =json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password})
     
-        if secret:
-            data=secret.encrypt(data.encode())
+        if aes_key:
+            data=encrypt(data.encode())
             s.sendall(data)
         else:
             s.sendall(data.encode("utf-8"))
 def main():
     global HOST
     global s
-    global secret
-    secret=""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
             print("Searching for host")
@@ -193,7 +207,7 @@ def main():
             askName()
             time.sleep(0.1)
             print("connected\n")
-            get_secret(s)
+            exchange_secrets(s)
             get_lobbies(s)
             receive_from_server(s)
         except ConnectionRefusedError:

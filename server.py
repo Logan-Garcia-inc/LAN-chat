@@ -24,6 +24,7 @@ public_key = private_key.public_key()
 def debug_print(*args ,**kwargs):
     if debug:
         print(*args,**kwargs)
+
 def getLanIp():
     """
     Get the local LAN IPv4 address of the machine.
@@ -39,14 +40,13 @@ def getLanIp():
     except Exception as e:
         raise RuntimeError(f"Unable to determine LAN IP: {e}")
     
-def encrypt(plaintext):
-    global aes_key
+def encrypt(plaintext, aes_key):
     vector=os.urandom(12)
     encryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector)).encryptor()
     encryptedText=vector+encryptor.update(plaintext)+encryptor.tag()
     return encryptedText
 
-def decrypt(message):
+def decrypt(message, aes_key):
     vector = message[:12]  
     text = message[12:-16]  
     tag = message[-16:]
@@ -116,6 +116,9 @@ def remove_from_lobby(user):
             lobbies.pop(lobby)
         user.lobby=""
 
+def createSymmetricKey(pub,priv):
+    return aes_key
+
 def getInfo(user):
     send_to_client(user, {"type":"query","data":"info"})
     
@@ -158,7 +161,7 @@ def handle_client(conn, addr):
         debug_print("Receiving: ", end="")
         debug_print(data)
         try:
-            data=user.secret.decrypt(data).decode()
+            data=decrypt(data,user.aes_key)
         except Exception as e:
             #print (e)
             data=data.decode("utf-8")
@@ -173,6 +176,8 @@ def handle_client(conn, addr):
                 user.name=data["name"]
             if data["data"]=="lobby":
                 handle_lobby_response(user,data["message"])
+            if data["data"]=="secret":
+                user.aes_key=createSymmetricKey(data["message"], private_key)
 
         if data["type"]=="message" and data["message"]:              #messages
             send_to_clients(user, {"type":"message","message":data["message"], "from":data["name"]})
@@ -182,9 +187,9 @@ def handle_client(conn, addr):
                 case "lobby":
                     handle_lobby_query(user, data["message"])
                 case "secret":
-                    key =Fernet.generate_key()
+                    key = public_key
                     send_to_client(user, {"type":"response","data":"secret","message":key.decode("utf-8")})
-                    user.secret=Fernet(key)
+                    send_to_client(user, {"type":"query","data":"secret"})
                 case "quitLobby":
                     remove_from_lobby(user)
                     handle_lobby_query(user)
@@ -199,11 +204,11 @@ def send_to_clients(user,  message):
         if(id!=user):
            send_to_client(lobbies[lobby].users[user],message)
 
-def send_to_client(user, message):
+def send_to_client(user: User, message):
     message = json.dumps(message)
     debug_print("sending: "+message)
-    if user.secret !="":
-        message=user.secret.encrypt(message.encode())
+    if user.aes_key !="":
+        message=encrypt(message.encode(),user.aes_key)
         user.conn.sendall(message)
     else:
         user.conn.sendall(message.encode("utf-8"))
