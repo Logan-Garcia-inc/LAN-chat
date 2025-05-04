@@ -175,9 +175,9 @@ def handleResponse(s,data):
             if data["data"]=="lobbyList":
                 lobbyJoin(data)
             if data["data"]=="secret":
-                server_public_key=serialization.load_pem_public_key(data["message"])
+                server_public_key=serialization.load_pem_public_key(data["message"].encode("utf-8"))
                 derived_key=private_key.exchange(ec.ECDH(), server_public_key)
-                aes_key=HKDF(algorithm=hashes.SHA256(),length=32, salt=None info=b'key exchange').derive(derived_key)
+                aes_key=HKDF(algorithm=hashes.SHA256(),length=32, salt=None, info=b'key exchange').derive(derived_key)
                
             
         case "query":

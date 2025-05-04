@@ -187,7 +187,7 @@ def handle_client(conn, addr):
                 case "lobby":
                     handle_lobby_query(user, data["message"])
                 case "secret":
-                    key = public_key
+                    key = public_key.public_bytes(encoding=serialization.Encoding.PEM,format=serialization.PublicFormat.SubjectPublicKeyInfo)
                     send_to_client(user, {"type":"response","data":"secret","message":key.decode("utf-8")})
                     send_to_client(user, {"type":"query","data":"secret"})
                 case "quitLobby":
