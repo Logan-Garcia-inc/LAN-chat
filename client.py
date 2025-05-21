@@ -16,14 +16,14 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-send_loop_thread=""
-s=""
+send_loop_thread=None
+s=None
 password=""
 lobby=""
 private_key = ec.generate_private_key(ec.SECP256R1())
 public_key = private_key.public_key()
-server_public_key=""
-aes_key=""
+#server_public_key=""
+aes_key=None
 path=__file__
 PORT=42069
 
@@ -38,16 +38,13 @@ def encrypt(plaintext):
     encryptedText=vector + encryptor.update(plaintext) + encryptor.tag()
     return encryptedText
 
-def decrypt(message):
-    vector = message[:12]  
-    text = message[12:-16]  
-    tag = message[-16:]
+def decrypt(data):
+    vector = data[:12]  
+    text =data[12:-16]  
+    tag = data[-16:]
     decryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector, tag)).decryptor()
-    decrypted_message = decryptor.update(text) + decryptor.finalize()
-    return decrypted_message
-
-def exchange_secrets(s):
-    send_to_server(s,type="query", data="secret")
+    decrypted_data = decryptor.update(text) + decryptor.finalize()
+    return decrypted_data
 
 
 def checkCommands(val):
@@ -124,16 +121,16 @@ def get_lobbies(s):
 def encrypt(plaintext):
     vector=os.urandom(12)
     encryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector)).encryptor()
-    encryptedText=vector+encryptor.update(plaintext)+encryptor.tag()
+    encryptedText=vector+encryptor.update(plaintext)+encryptor.finalize()+encryptor.tag
     return encryptedText
 
-def decrypt(message):
-    vector = message[:12]  
-    text = message[12:-16]  
-    tag = message[-16:]
+def decrypt(data):
+    vector = data[:12]  
+    text = data[12:-16]  
+    tag = data[-16:]
     decryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector, tag)).decryptor()
-    decrypted_message = decryptor.update(text) + decryptor.finalize()
-    return decrypted_message
+    decrypted_data = decryptor.update(text) + decryptor.finalize()
+    return decrypted_data
 
 def receive_from_server(s):
     global aes_key
@@ -146,18 +143,23 @@ def receive_from_server(s):
         debug_print(data) 
         if not data:
             s.close()
-        if aes_key:
-            data=decrypt(data)
-        else:
+        try:
             data=data.decode("utf-8")
-
-        data=json.loads(data)
+            data=json.loads(data)
+        except:
+            data=decrypt(data)
+            data=json.loads(data)
         handleResponse(s,data)
 
 def handleResponse(s,data):
     global send_loop_thread
     global private_key
     global aes_key
+    if aes_key==None:
+        send_to_server(s,type="query", data="secret")
+    elif lobby=="":
+        get_lobbies(s)
+
     match (data["type"]):
         case "message":
             print(data["from"]+": "+data["message"])
@@ -174,23 +176,26 @@ def handleResponse(s,data):
                     get_lobbies(s)
             if data["data"]=="lobbyList":
                 lobbyJoin(data)
-            if data["data"]=="secret":
+            if data["data"]=="secret": 
                 server_public_key=serialization.load_pem_public_key(data["message"].encode("utf-8"))
                 derived_key=private_key.exchange(ec.ECDH(), server_public_key)
                 aes_key=HKDF(algorithm=hashes.SHA256(),length=32, salt=None, info=b'key exchange').derive(derived_key)
-               
             
         case "query":
             print(data)
             if data["data"]=="info":
                 send_to_server(s, type="response", data="info")
-
-def send_to_server(s=socket, type="message", data="", message=""):
+            if data["data"]=="secret":
+                key = public_key.public_bytes(encoding=serialization.Encoding.PEM,format=serialization.PublicFormat.SubjectPublicKeyInfo)
+                send_to_server(s, {"type":"response","data":"secret","message":key.decode("utf-8")},encrypted=False)
+               
+                
+def send_to_server(s=socket, type="message", data="", message="",encrypted=True):
         global secret
 #        debug_print("sending: "+message)
         data =json.dumps({"type":type,"data":data,"message":message,"name":name,"password":password})
     
-        if aes_key:
+        if aes_key and encrypted==True:
             data=encrypt(data.encode())
             s.sendall(data)
         else:
@@ -207,8 +212,7 @@ def main():
             askName()
             time.sleep(0.1)
             print("connected\n")
-            exchange_secrets(s)
-            get_lobbies(s)
+            send_to_server(s,type="query", data="secret")
             receive_from_server(s)
         except ConnectionRefusedError:
             print("Connection refused")

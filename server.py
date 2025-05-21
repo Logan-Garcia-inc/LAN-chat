@@ -46,13 +46,13 @@ def encrypt(plaintext, aes_key):
     encryptedText=vector+encryptor.update(plaintext)+encryptor.tag()
     return encryptedText
 
-def decrypt(message, aes_key):
-    vector = message[:12]  
-    text = message[12:-16]  
-    tag = message[-16:]
+def decrypt(data, aes_key):
+    vector = data[:12]  
+    text = data[12:-16]  
+    tag = data[-16:]
     decryptor = Cipher(algorithms.AES(aes_key),modes.GCM(vector, tag)).decryptor()
-    decrypted_message = decryptor.update(text) + decryptor.finalize()
-    return decrypted_message
+    decrypted_data = decryptor.update(text) + decryptor.finalize()
+    return decrypted_data
 
 def broadcast():
     try:
@@ -85,7 +85,7 @@ class User:
         self.lobby=""
         self.id=User.uniqueID
         User.uniqueID+=1
-        self.aes_key="" 
+        self.aes_key=None
 
 lobbies={"default":Lobby("default","")}
 def add_to_lobby(user,lobby):
@@ -117,6 +117,8 @@ def remove_from_lobby(user):
         user.lobby=""
 
 def createSymmetricKey(pub,priv):
+    derived_key=priv.exchange(ec.ECDH(), pub)
+    aes_key=HKDF(algorithm=hashes.SHA256(),length=32, salt=None, info=b'key exchange').derive(derived_key)
     return aes_key
 
 def getInfo(user):
@@ -161,23 +163,25 @@ def handle_client(conn, addr):
         debug_print("Receiving: ", end="")
         debug_print(data)
         try:
-            data=decrypt(data,user.aes_key)
+            data=data.decode("utf-8")
         except Exception as e:
             #print (e)
-            data=data.decode("utf-8")
+            data=decrypt(data, user.aes_key)
         debug_print("decoded: "+data)
         data=json.loads(data)
         user.password=data["password"]
         if data["name"]:
             user.name=data["name"]
-
+        
         if(data["type"]=="response"):                                   #responses
             if data["data"]=="info":
                 user.name=data["name"]
             if data["data"]=="lobby":
                 handle_lobby_response(user,data["message"])
             if data["data"]=="secret":
-                user.aes_key=createSymmetricKey(data["message"], private_key)
+                print(data["message"])
+                user.aes_key=createSymmetricKey(serialization.load_pem_public_key(data["message"].encode("utf-8")), private_key)
+                print(user.aes_key)
 
         if data["type"]=="message" and data["message"]:              #messages
             send_to_clients(user, {"type":"message","message":data["message"], "from":data["name"]})
@@ -188,12 +192,15 @@ def handle_client(conn, addr):
                     handle_lobby_query(user, data["message"])
                 case "secret":
                     key = public_key.public_bytes(encoding=serialization.Encoding.PEM,format=serialization.PublicFormat.SubjectPublicKeyInfo)
-                    send_to_client(user, {"type":"response","data":"secret","message":key.decode("utf-8")})
-                    send_to_client(user, {"type":"query","data":"secret"})
+                    send_to_client(user, {"type":"response","data":"secret","message":key.decode("utf-8")},encrypted=False)
+                    threading.Event().wait(0.2)
                 case "quitLobby":
                     remove_from_lobby(user)
                     handle_lobby_query(user)
         debug_print("\n")
+        if user.aes_key==None:
+            send_to_client(user, {"type":"query","data":"secret"})
+
 
 def send_to_clients(user,  message):
      lobby=user.lobby
@@ -204,10 +211,10 @@ def send_to_clients(user,  message):
         if(id!=user):
            send_to_client(lobbies[lobby].users[user],message)
 
-def send_to_client(user: User, message):
+def send_to_client(user: User, message,encrypted=True):
     message = json.dumps(message)
     debug_print("sending: "+message)
-    if user.aes_key !="":
+    if user.aes_key !=None and encrypted:
         message=encrypt(message.encode(),user.aes_key)
         user.conn.sendall(message)
     else:
