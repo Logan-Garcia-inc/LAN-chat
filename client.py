@@ -1,4 +1,4 @@
-name="rr"
+name=""
 HOST=""
 debug=False
 import json
