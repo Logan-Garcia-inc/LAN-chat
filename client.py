@@ -145,6 +145,7 @@ def send_to_server(s=socket, type="message", data="", message=""):
             s.sendall(data)
         else:
             s.sendall(data.encode("utf-8"))
+        time.sleep(.3)
 def main():
     global HOST
     global s
