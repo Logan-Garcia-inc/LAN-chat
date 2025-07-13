@@ -1,4 +1,4 @@
-name=""
+name="rr"
 HOST=""
 debug=False
 import json
@@ -100,8 +100,6 @@ def receive_from_server(s):
         debug_print("receiving: ",end="" )
         debug_print(data) 
         if not data:
-            s.close()
-        if should_exit:
             s.close()
         if secret:
             data=secret.decrypt(data)
